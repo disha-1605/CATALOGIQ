@@ -3,12 +3,9 @@
  * Shared async fetch wrappers, session auth, alert management, and formatting utilities.
  */
 
-// Automatically detect backend API host
-const API_BASE = window.API_BASE_URL || (
-  window.location.port === '8000' 
-    ? window.location.origin 
-    : 'http://localhost:8000'
-);
+// Automatically detect backend API host for same-origin production deployment
+const API_BASE = window.API_BASE_URL || window.location.origin;
+
 
 const API = {
   /**

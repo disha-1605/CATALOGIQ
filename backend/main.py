@@ -2,11 +2,13 @@
 
 import json
 import secrets
+from pathlib import Path
 from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
 from fastapi import FastAPI, Depends, HTTPException, Query, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, func
@@ -88,11 +90,25 @@ def seed_admin_user():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ensure database tables exist and admin user is seeded on startup."""
+    """Ensure database tables exist, catalog/search data is seeded if empty, and admin user is seeded on startup."""
     init_db()
+
+    # Check whether Product and SearchQuery data exist
+    db = SessionLocal()
+    try:
+        prod_count = db.query(Product).count()
+        query_count = db.query(SearchQuery).count()
+        if prod_count == 0 or query_count == 0:
+            from backend.seed_data import seed_database_and_csvs
+            seed_database_and_csvs()
+    finally:
+        db.close()
+
     seed_admin_user()
     yield
 
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
 
 app = FastAPI(
     title="CatalogIQ API",
@@ -927,5 +943,25 @@ def _render_action_page(
   </div>
 </body>
 </html>"""
+
+
+# =============================================================================
+# FRONTEND STATIC FILES & ROOT ROUTE
+# Mounted after all /api/* routes so API routes always take precedence.
+# =============================================================================
+
+@app.get("/", include_in_schema=False)
+def root():
+    """Redirect root path to login page."""
+    return RedirectResponse(url="/login.html")
+
+
+if FRONTEND_DIR.exists():
+    app.mount(
+        "/",
+        StaticFiles(directory=str(FRONTEND_DIR), html=True),
+        name="frontend",
+    )
+
 
 
