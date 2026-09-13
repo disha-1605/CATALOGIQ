@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FBF7F3]">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CatalogIQ — Search Intelligence Workspace</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            display: ['Space Grotesk', 'sans-serif'],
+            serif: ['Newsreader', 'Georgia', 'serif'],
+          },
+          colors: {
+            base: '#FBF7F3',
+            surface: '#FFFFFF',
+            structure: '#101827',
+            fashion: '#E83E4F',
+            'fashion-warm': '#F97316',
+            'coral-soft': '#FDE7E7',
+            'peach-soft': '#FFF0E8',
+            'lavender-soft': '#F0EAFB',
+            slate: {
+              850: '#172033',
+              900: '#111827',
+              950: '#0B0F19'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .font-mono-num { font-feature-settings: 'tnum' on, 'lnum' on; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .fashion-gradient {
+      background: linear-gradient(135deg, #FFF0E8 0%, #FDE7E7 50%, #F5ECFD 100%);
+    }
+  </style>
+  <script src="api.js"></script>
+  <script>
+    CatalogIQ_Auth.requireAuth();
+  </script>
+</head>
+<body class="h-full bg-[#FBF7F3] text-slate-900 antialiased flex flex-col lg:flex-row selection:bg-[#FDE7E7] selection:text-[#E83E4F]">
+
+  <!-- ========================================================================= -->
+  <!-- 1. DESKTOP SIDEBAR NAVIGATION (>= 1024px) -->
+  <!-- ========================================================================= -->
+  <aside class="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 bg-[#101827] text-slate-300 z-50 border-r border-slate-800/80 justify-between">
+    <div>
+      <!-- Brand / Header -->
+      <div class="p-5 border-b border-slate-800/80 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-[#E83E4F] flex items-center justify-center text-white font-display font-bold text-base shadow-sm shrink-0">
+          Q
+        </div>
+        <div>
+          <span class="font-display font-bold text-base text-white tracking-tight">CatalogIQ</span>
+          <span class="block text-[9px] font-mono uppercase tracking-wider text-slate-400">Search to Catalog Intelligence</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="px-3.5 py-5 space-y-1.5">
+        <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium text-xs tracking-tight transition-all">
+          <span class="material-symbols-outlined text-[18px]">dashboard</span>
+          <span>Overview</span>
+        </a>
+
+        <a href="search-intelligence.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#2D1A24] text-white border border-[#E83E4F]/30 font-medium text-xs tracking-tight transition-all shadow-xs">
+          <span class="material-symbols-outlined text-[18px] text-[#E83E4F]">radar</span>
+          <span>Search Intelligence</span>
+        </a>
+
+        <a href="product-audit.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium text-xs tracking-tight transition-all">
+          <span class="material-symbols-outlined text-[18px]">fact_check</span>
+          <span>Product Audit</span>
+        </a>
+
+        <!-- Insights Focus Section -->
+        <div class="pt-6 px-3 pb-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400">Insights</div>
+        
+        <button onclick="setFilter('ATTRIBUTE_GAP')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors text-left">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#E83E4F]"></span>
+            <span>High Impact</span>
+          </span>
+          <span id="sidebar-attr-count" class="font-mono text-[11px] text-slate-400 font-semibold">22</span>
+        </button>
+
+        <button onclick="setFilter('INVENTORY_GAP')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors text-left">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>Needs Attention</span>
+          </span>
+          <span id="sidebar-inv-count" class="font-mono text-[11px] text-slate-400 font-semibold">12</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Sidebar Bottom -->
+    <div class="p-4 border-t border-slate-800/80 bg-slate-950/60 text-xs">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-[10px]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Live DB
+        </span>
+      </div>
+      <p class="text-[10px] text-slate-400 font-mono">40 queries · 200 products</p>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- 2. TOP BAR & MAIN CONTENT -->
+  <!-- ========================================================================= -->
+  <div class="flex-1 lg:ml-60 flex flex-col min-h-screen">
+    
+    <!-- Top Bar -->
+    <header class="sticky top-0 z-40 bg-[#FBF7F3]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 flex items-center justify-between">
+      <div class="lg:hidden flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-[#E83E4F] flex items-center justify-center text-white font-display font-bold text-sm">Q</div>
+        <span class="font-display font-bold text-base text-slate-900 tracking-tight">CatalogIQ</span>
+      </div>
+
+      <div class="hidden sm:flex items-center w-full max-w-md relative">
+        <span class="material-symbols-outlined text-slate-400 absolute left-3 text-[18px]">search</span>
+        <input type="text" 
+               id="global-search-input" 
+               placeholder="Filter fashion search queries..." 
+               class="w-full pl-9 pr-12 py-1.5 text-xs bg-white border border-stone-300/80 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#E83E4F] focus:ring-1 focus:ring-[#E83E4F]/20 shadow-2xs font-sans transition-all"/>
+        <kbd class="absolute right-2.5 px-1.5 py-0.5 text-[10px] font-mono bg-stone-100 text-slate-400 rounded border border-stone-200">⌘ K</kbd>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button onclick="openAlertHistoryModal()" class="p-1.5 rounded-full text-slate-500 hover:text-slate-800 hover:bg-stone-100 transition-colors relative" title="View Alert History">
+          <span class="material-symbols-outlined text-[20px]">notifications</span>
+          <span id="alert-history-badge" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-[#E83E4F]"></span>
+        </button>
+        <div id="user-account-badge"></div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 w-full max-w-[1440px] px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-8 mx-auto space-y-7 pb-24 lg:pb-12">
+      
+      <!-- Page Title -->
+      <div class="space-y-1">
+        <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-[#E83E4F]">
+          SEARCH INTELLIGENCE WORKBENCH
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display">
+          Search Diagnostics & Remediation
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-600 max-w-3xl">
+          Find where catalog quality is limiting customer discovery and take immediate action.
+        </p>
+      </div>
+
+      <!-- Active Query Detail Card (Loaded Dynamically) -->
+      <section id="detail-card-container">
+        <div class="bg-white rounded-2xl p-8 border border-stone-200/90 shadow-2xs text-center text-xs font-mono text-slate-400 animate-pulse">
+          Loading diagnostic workbench...
+        </div>
+      </section>
+
+      <!-- ALL SEARCH OPPORTUNITIES TABLE / MATRIX -->
+      <section class="bg-white rounded-2xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-4">
+        
+        <!-- Controls Header -->
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-stone-100">
+          <div>
+            <h2 class="font-display text-base font-bold text-slate-900 tracking-tight">All Search Opportunities</h2>
+            <p id="identified-count" class="text-xs text-slate-500 font-mono">40 queries monitored</p>
+          </div>
+
+          <!-- Controls: Search + Filter Pills + Sort -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <!-- Search bar -->
+            <div class="relative min-w-[200px]">
+              <span class="material-symbols-outlined text-slate-400 absolute left-3 top-2 text-[16px]">search</span>
+              <input type="text" 
+                     id="table-search-input" 
+                     placeholder="Filter searches..." 
+                     class="w-full pl-8 pr-3 py-1.5 text-xs bg-stone-50 border border-stone-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#E83E4F]"/>
+            </div>
+
+            <!-- Filter Pills -->
+            <div class="inline-flex rounded-lg p-0.5 bg-stone-100 border border-stone-200">
+              <button id="filter-all" onclick="setFilter('ALL')" class="px-3 py-1 rounded-md text-xs font-mono font-medium transition-all bg-white text-slate-900 shadow-2xs">All</button>
+              <button id="filter-attr" onclick="setFilter('ATTRIBUTE_GAP')" class="px-3 py-1 rounded-md text-xs font-mono font-medium text-slate-600 hover:text-slate-900 transition-all">Attribute Gap</button>
+              <button id="filter-inv" onclick="setFilter('INVENTORY_GAP')" class="px-3 py-1 rounded-md text-xs font-mono font-medium text-slate-600 hover:text-slate-900 transition-all">Inventory Gap</button>
+            </div>
+
+            <!-- Sort dropdown -->
+            <select id="sort-selector" onchange="handleSortChange()" class="text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg px-2.5 py-1.5 text-slate-700 focus:outline-none">
+              <option value="opportunity_score">Sort: Opportunity Score</option>
+              <option value="search_volume">Sort: Search Volume</option>
+              <option value="coverage">Sort: Catalog Coverage</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Table Container -->
+        <div class="overflow-x-auto no-scrollbar">
+          <table class="w-full text-left text-xs font-mono">
+            <thead>
+              <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-stone-100">
+                <th class="py-2.5 px-3 font-semibold">Query</th>
+                <th class="py-2.5 px-3 font-semibold">Root Cause</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Volume</th>
+                <th class="py-2.5 px-3 font-semibold text-right">CTR</th>
+                <th class="py-2.5 px-3 font-semibold text-right">CVR</th>
+                <th class="py-2.5 px-3 font-semibold text-right">Coverage</th>
+                <th class="py-2.5 pl-3 font-semibold text-right">Score</th>
+              </tr>
+            </thead>
+            <tbody id="searches-table-tbody" class="divide-y divide-stone-100">
+              <!-- Loaded dynamically -->
+            </tbody>
+          </table>
+        </div>
+
+      </section>
+
+  <!-- ========================================================================= -->
+  <!-- 3. SEND CATALOG ATTENTION ALERT MODAL (PART 7 REQUIREMENT) -->
+  <!-- ========================================================================= -->
+  <div id="email-alert-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden flex flex-col">
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-rose-100 text-[#E83E4F] flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">forward_to_inbox</span>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base text-slate-900 tracking-tight">Send Catalog Attention Alert</h3>
+            <p class="text-xs text-slate-500">Notify the catalog team about a high-priority search issue.</p>
+          </div>
+        </div>
+        <button onclick="closeEmailAlertModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-stone-200/60 transition-colors">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-5">
+        <!-- Read-Only Query Summary -->
+        <div class="bg-stone-50 rounded-xl p-4 border border-stone-200/80 space-y-3 font-mono text-xs">
+          <div class="flex justify-between items-start pb-2 border-b border-stone-200/60">
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-sans">Search Query</span>
+              <span id="modal-query-text" class="text-sm font-bold text-slate-900 font-sans">black oversized kurta men</span>
+            </div>
+            <div class="text-right">
+              <span class="text-[10px] uppercase text-slate-400 block font-sans">Opportunity Score</span>
+              <span id="modal-score-text" class="text-base font-bold text-[#E83E4F] font-display">93.2</span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 pt-1 text-slate-700">
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-sans">Search Volume</span>
+              <span id="modal-volume-text" class="font-bold text-slate-900">9,200</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-sans">Catalog Coverage</span>
+              <span id="modal-coverage-text" class="font-bold text-rose-600">0%</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-sans">Root Cause</span>
+              <span id="modal-root-cause-text" class="font-bold text-slate-900">Attribute Gap</span>
+            </div>
+            <div>
+              <span class="text-[10px] uppercase text-slate-400 block font-sans">Affected Products</span>
+              <span id="modal-affected-text" class="font-bold text-slate-900">7</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipient Input -->
+        <div class="space-y-1.5">
+          <label for="alert-recipient-input" class="block text-xs font-semibold text-slate-700">
+            Recipient Email
+          </label>
+          <input type="email" 
+                 id="alert-recipient-input" 
+                 value="catalog-team@catalogiq.demo" 
+                 class="w-full px-3 py-2 text-xs bg-white border border-stone-300 rounded-lg text-slate-800 focus:outline-none focus:border-[#E83E4F] focus:ring-1 focus:ring-[#E83E4F]/20 font-mono shadow-2xs transition-all"/>
+          <p class="text-[11px] text-slate-400 font-sans">Internal catalog operations desk</p>
+        </div>
+
+        <!-- Inline Error/Success Box -->
+        <div id="modal-feedback" class="hidden p-3 rounded-lg text-xs font-mono"></div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-end gap-2.5">
+        <button onclick="closeEmailAlertModal()" 
+                class="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-slate-700 rounded-xl text-xs font-semibold transition-all">
+          Cancel
+        </button>
+        <button id="send-alert-btn" 
+                onclick="handleSendAlert()" 
+                class="inline-flex items-center gap-1.5 px-5 py-2 bg-[#E83E4F] hover:bg-[#D42B3C] text-white rounded-xl text-xs font-semibold shadow-xs transition-all">
+          <span class="material-symbols-outlined text-[16px]">send</span>
+          <span>Send Alert</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- 4. ALERT HISTORY MODAL (PART 10 REQUIREMENT) -->
+  <!-- ========================================================================= -->
+  <div id="alert-history-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="p-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-rose-100 text-[#E83E4F] flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">history</span>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base text-slate-900 tracking-tight">Alert History</h3>
+            <p class="text-xs text-slate-500 font-mono">Catalog team notifications queued in this session</p>
+          </div>
+        </div>
+        <button onclick="closeAlertHistoryModal()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-stone-200/60 transition-colors">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto flex-1">
+        <div id="alert-history-table-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <div class="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between">
+        <span class="text-[11px] font-mono text-slate-400">Demo Alert Queue</span>
+        <button onclick="closeAlertHistoryModal()" class="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-slate-800 rounded-xl text-xs font-semibold transition-all">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript Controller -->
+  <script>
+    let allSearches = [];
+    let currentDetail = null;
+    let activeFilter = 'ALL';
+    let currentSort = 'opportunity_score';
+    let explanationCache = {};
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 0. Render Account Area
+      CatalogIQ_Auth.renderUserBadge('user-account-badge');
+      updateAlertBadge();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryIdFromUrl = urlParams.get('query_id');
+      const rootCauseFromUrl = urlParams.get('root_cause');
+
+      if (rootCauseFromUrl) {
+        activeFilter = rootCauseFromUrl;
+      }
+
+      const tableSearch = document.getElementById('table-search-input');
+      if (tableSearch) {
+        tableSearch.addEventListener('input', () => renderSearchesTable());
+      }
+      const globalSearch = document.getElementById('global-search-input');
+      if (globalSearch) {
+        globalSearch.addEventListener('input', (e) => {
+          if (tableSearch) {
+            tableSearch.value = e.target.value;
+            renderSearchesTable();
+          }
+        });
+      }
+
+      try {
+        const searchesData = await window.CatalogIQ_API.getSearches();
+        allSearches = searchesData.items || [];
+
+        let initialId = queryIdFromUrl || (allSearches.length > 0 ? allSearches[0].query_id : null);
+        if (initialId) {
+          await loadSearchDetail(initialId);
+        }
+
+        updateFilterButtons();
+        renderSearchesTable();
+
+      } catch (err) {
+        console.error('Failed to load searches:', err);
+      }
+    });
+
+    async function loadSearchDetail(queryId) {
+      const container = document.getElementById('detail-card-container');
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl p-8 border border-stone-200/90 shadow-2xs text-center text-xs font-mono text-slate-400 animate-pulse">
+          Loading diagnostic workbench for ${escapeHtml(queryId)}...
+        </div>
+      `;
+
+      try {
+        currentDetail = await window.CatalogIQ_API.getSearchDetail(queryId);
+        renderDetailCard(currentDetail);
+        renderSearchesTable();
+      } catch (err) {
+        console.error('Failed to load detail:', err);
+      }
+    }
+
+    function renderDetailCard(item) {
+      const container = document.getElementById('detail-card-container');
+      const score = item.opportunity_score.toFixed(1);
+      const rootCauseLabel = window.CatalogIQ_Format.rootCauseLabel(item.root_cause);
+      const badgeClass = item.root_cause === 'INVENTORY_GAP' 
+        ? 'bg-amber-100 text-amber-900 border border-amber-300' 
+        : 'bg-rose-100 text-rose-900 border border-rose-300';
+      const covPct = Math.round(item.catalog_coverage * 100);
+
+      // Priority calculation (Part 4 requirement: >=90 Critical, >=80 High Priority, <80 Normal)
+      const priority = CatalogIQ_Priority.fromScore(item.opportunity_score);
+
+      // Email Alert action button: ONLY prominent if score >= 80 (Part 6 requirement)
+      let emailAlertActionHtml = '';
+      if (priority.isHighPriority) {
+        const btnClass = priority.isCritical 
+          ? 'bg-[#E83E4F] hover:bg-[#D42B3C] text-white shadow-xs' 
+          : 'bg-amber-600 hover:bg-amber-700 text-white shadow-xs';
+
+        emailAlertActionHtml = `
+          <button onclick="openEmailAlertModal()" 
+                  class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl ${btnClass} text-xs font-semibold font-sans transition-all"
+                  title="Notify catalog operations regarding high-priority opportunity">
+            <span class="material-symbols-outlined text-[16px]">mail</span>
+            <span>Email Alert</span>
+          </button>
+        `;
+      }
+
+      // Synthesize specific evidence metrics
+      const missingKeys = Object.keys(item.missing_attributes_breakdown || {});
+      const primaryMissing = missingKeys.length > 0 ? missingKeys[0] : 'fit';
+
+      container.innerHTML = `
+        <div class="bg-white rounded-2xl p-6 sm:p-7 border border-stone-200/90 shadow-2xs space-y-6">
+          
+          <!-- Top Row: Query Title + Priority + Score + Email Alert Action -->
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-stone-100">
+            <div class="space-y-1.5">
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-mono font-bold ${priority.badgeClass}">
+                  ${priority.label}
+                </span>
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded text-[11px] font-mono font-bold ${badgeClass}">
+                  ${rootCauseLabel}
+                </span>
+                <span class="text-xs font-mono text-slate-400">ID: ${escapeHtml(item.query_id)}</span>
+              </div>
+              <h2 class="text-2xl sm:text-3xl font-bold font-display text-slate-900 tracking-tight">
+                "${escapeHtml(item.query)}"
+              </h2>
+            </div>
+
+            <!-- Opportunity Score Badge & Email Alert Action -->
+            <div class="flex items-center gap-4 shrink-0">
+              <div class="text-right">
+                <span class="block text-[10px] font-mono uppercase tracking-wider text-slate-400">Opportunity Score</span>
+                <div class="text-3xl sm:text-4xl font-bold font-display text-[#E83E4F] font-mono-num">
+                  ${score}<span class="text-sm font-normal text-slate-400 font-mono">/100</span>
+                </div>
+              </div>
+              ${emailAlertActionHtml}
+            </div>
+          </div>
+
+          <!-- 5-Metric Tiles Strip -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+            <div class="bg-[#FBF7F3] p-3.5 rounded-xl border border-stone-200/80">
+              <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Monthly Searches</span>
+              <span class="text-lg font-bold font-display text-slate-900 mt-1 block font-mono-num">
+                ${item.search_volume.toLocaleString()}
+              </span>
+            </div>
+
+            <div class="bg-[#FBF7F3] p-3.5 rounded-xl border border-stone-200/80">
+              <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Click-Through Rate</span>
+              <span class="text-lg font-bold font-display text-slate-900 mt-1 block font-mono-num">${(item.ctr * 100).toFixed(1)}%</span>
+            </div>
+
+            <div class="bg-[#FBF7F3] p-3.5 rounded-xl border border-stone-200/80">
+              <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Conversion Rate</span>
+              <span class="text-lg font-bold font-display text-slate-900 mt-1 block font-mono-num">${(item.conversion_rate * 100).toFixed(1)}%</span>
+            </div>
+
+            <div class="bg-[#FBF7F3] p-3.5 rounded-xl border border-stone-200/80">
+              <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Relevant Products</span>
+              <span class="text-lg font-bold font-display text-slate-900 mt-1 block font-mono-num">${item.relevant_products} SKUs</span>
+            </div>
+
+            <div class="bg-[#FBF7F3] p-3.5 rounded-xl border border-stone-200/80 col-span-2 sm:col-span-1">
+              <span class="text-[10px] font-mono text-slate-500 uppercase tracking-wider block">Catalog Coverage</span>
+              <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-lg font-bold font-display ${covPct < 60 ? 'text-[#E83E4F]' : 'text-emerald-600'} font-mono-num">${covPct}%</span>
+                <span class="text-[10px] font-mono ${covPct < 60 ? 'text-rose-700 font-semibold' : 'text-emerald-700'}">${covPct < 60 ? 'Low coverage' : 'Healthy'}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- WHY / WHAT SPLIT PANELS (Colorful Editorial Cards) -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+            
+            <!-- Left: WHY THIS IS HAPPENING (Soft Blush/Pink) -->
+            <div class="bg-[#FDF2F4] p-5 sm:p-6 rounded-2xl border border-rose-200/70 space-y-3 flex flex-col justify-between">
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">💡</span>
+                  <h3 class="font-display text-xs font-bold uppercase tracking-wider text-rose-950">Why this is happening</h3>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">
+                  Customer query requires specific attributes (${escapeHtml(primaryMissing)}). While ${item.relevant_products} relevant products exist in the catalog, only ${item.correctly_matching_products} has the complete metadata tag. ${item.affected_products} listings are currently hidden from search facet discovery.
+                </p>
+              </div>
+
+              <!-- 3 Mini Data Chips -->
+              <div class="grid grid-cols-3 gap-2 pt-2 border-t border-rose-200/60 font-mono text-center">
+                <div class="bg-white/80 p-2 rounded-lg border border-rose-200/50">
+                  <span class="block text-base font-bold text-slate-900">${item.relevant_products}</span>
+                  <span class="text-[9px] text-slate-500 uppercase">relevant products</span>
+                </div>
+                <div class="bg-white/80 p-2 rounded-lg border border-rose-200/50">
+                  <span class="block text-base font-bold text-emerald-700">${item.correctly_matching_products}</span>
+                  <span class="text-[9px] text-slate-500 uppercase">properly tagged</span>
+                </div>
+                <div class="bg-white/80 p-2 rounded-lg border border-rose-200/50">
+                  <span class="block text-base font-bold text-[#E83E4F]">${item.affected_products}</span>
+                  <span class="text-[9px] text-slate-500 uppercase">missing "${escapeHtml(primaryMissing)}"</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: WHAT TO FIX (Soft Warm Peach/Orange) -->
+            <div class="bg-[#FFF7ED] p-5 sm:p-6 rounded-2xl border border-orange-200/70 space-y-3 flex flex-col justify-between">
+              <div class="space-y-2">
+                <div class="flex items-center gap-2">
+                  <span class="text-base">🛠</span>
+                  <h3 class="font-display text-xs font-bold uppercase tracking-wider text-orange-950">What to fix</h3>
+                </div>
+                <p class="text-xs sm:text-sm text-slate-900 leading-relaxed font-medium">
+                  ${escapeHtml(item.recommended_action)}
+                </p>
+              </div>
+
+              <div class="space-y-2.5 pt-2 border-t border-orange-200/60">
+                <div class="flex items-center gap-2">
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-100 text-emerald-800 uppercase">Low Effort</span>
+                  <span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-100 text-rose-800 uppercase">High Impact</span>
+                </div>
+                <a href="product-audit.html?q=${encodeURIComponent(item.extracted_intent && item.extracted_intent.category ? item.extracted_intent.category : item.query)}" 
+                   class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#E83E4F] hover:bg-[#D42B3C] text-white text-xs font-semibold transition-all shadow-2xs">
+                  <span>View affected products</span>
+                  <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- EXECUTIVE EXPLANATION (Very light coral / lavender gradient) -->
+          <div class="fashion-gradient rounded-2xl p-5 sm:p-6 border border-rose-200/70 space-y-3">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-[#E83E4F] text-sm">✦</span>
+                <h3 class="font-display text-xs font-bold uppercase tracking-wider text-slate-900">Executive Explanation</h3>
+              </div>
+              <button onclick="generateExplanation('${escapeHtml(item.query_id)}')" class="text-xs font-mono font-semibold text-[#E83E4F] hover:underline flex items-center gap-1">
+                <span>Refresh AI Synthesis</span>
+                <span class="material-symbols-outlined text-[14px]">refresh</span>
+              </button>
+            </div>
+
+            <div id="explanation-body" class="text-xs sm:text-sm text-slate-800 leading-relaxed font-sans">
+              <span class="italic text-slate-500">Loading plain-language explanation...</span>
+            </div>
+
+            <div class="pt-2 border-t border-rose-200/60 flex items-center justify-between text-[10px] font-mono text-slate-500">
+              <span class="flex items-center gap-1.5">
+                <span class="px-1.5 py-0.5 rounded bg-purple-100 text-purple-900 font-bold">Gemini 3.5</span>
+                <span>AI Grounded Diagnostics</span>
+              </span>
+              <span id="explanation-source-badge">Source: llm</span>
+            </div>
+          </div>
+
+        </div>
+      `;
+
+      // Auto-trigger explanation
+      generateExplanation(item.query_id);
+    }
+
+    async function generateExplanation(queryId) {
+      const body = document.getElementById('explanation-body');
+      const badge = document.getElementById('explanation-source-badge');
+      if (!body) return;
+
+      if (explanationCache[queryId]) {
+        body.innerHTML = `<p class="leading-relaxed text-slate-900">${escapeHtml(explanationCache[queryId].text)}</p>`;
+        if (badge) badge.textContent = `Source: ${explanationCache[queryId].source} (${explanationCache[queryId].model})`;
+        return;
+      }
+
+      body.innerHTML = '<span class="inline-block animate-pulse text-xs font-mono text-[#E83E4F]">Synthesizing business explanation from catalog diagnostics...</span>';
+
+      try {
+        const res = await window.CatalogIQ_API.explain(queryId);
+        explanationCache[queryId] = {
+          text: res.explanation,
+          source: res.source,
+          model: res.model
+        };
+        body.innerHTML = `<p class="leading-relaxed text-slate-900">${escapeHtml(res.explanation)}</p>`;
+        if (badge) badge.textContent = `Source: ${res.source} (${res.model})`;
+      } catch (err) {
+        body.innerHTML = '<span class="text-rose-700">Unable to generate explanation. Deterministic diagnostics remain active above.</span>';
+      }
+    }
+
+    function setFilter(cause) {
+      activeFilter = cause;
+      updateFilterButtons();
+      renderSearchesTable();
+    }
+
+    function updateFilterButtons() {
+      const btnAll = document.getElementById('filter-all');
+      const btnAttr = document.getElementById('filter-attr');
+      const btnInv = document.getElementById('filter-inv');
+      if (!btnAll || !btnAttr || !btnInv) return;
+
+      const activeClasses = ['bg-white', 'text-slate-900', 'shadow-2xs'];
+      const inactiveClasses = ['text-slate-600', 'hover:text-slate-900'];
+
+      [btnAll, btnAttr, btnInv].forEach(b => {
+        b.classList.remove(...activeClasses);
+        b.classList.add(...inactiveClasses);
+      });
+
+      if (activeFilter === 'ALL') {
+        btnAll.classList.remove(...inactiveClasses);
+        btnAll.classList.add(...activeClasses);
+      } else if (activeFilter === 'ATTRIBUTE_GAP') {
+        btnAttr.classList.remove(...inactiveClasses);
+        btnAttr.classList.add(...activeClasses);
+      } else if (activeFilter === 'INVENTORY_GAP') {
+        btnInv.classList.remove(...inactiveClasses);
+        btnInv.classList.add(...activeClasses);
+      }
+    }
+
+    function handleSortChange() {
+      currentSort = document.getElementById('sort-selector').value;
+      renderSearchesTable();
+    }
+
+    function renderSearchesTable() {
+      const tbody = document.getElementById('searches-table-tbody');
+      const searchInput = document.getElementById('table-search-input');
+      const searchTerm = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+      let filtered = allSearches.filter(s => {
+        if (activeFilter !== 'ALL' && s.root_cause !== activeFilter) return false;
+        if (searchTerm && !s.query.toLowerCase().includes(searchTerm)) return false;
+        return true;
+      });
+
+      filtered.sort((a, b) => {
+        if (currentSort === 'search_volume') return b.search_volume - a.search_volume;
+        if (currentSort === 'coverage') return a.catalog_coverage - b.catalog_coverage;
+        return b.opportunity_score - a.opportunity_score;
+      });
+
+      const countSpan = document.getElementById('identified-count');
+      if (countSpan) countSpan.textContent = `${filtered.length} queries monitored`;
+
+      const activeId = currentDetail ? currentDetail.query_id : null;
+
+      tbody.innerHTML = filtered.map(item => {
+        const isSelected = item.query_id === activeId;
+        const score = item.opportunity_score.toFixed(1);
+        const covPct = Math.round(item.catalog_coverage * 100);
+        const rootCauseLabel = window.CatalogIQ_Format.rootCauseLabel(item.root_cause);
+        const badgeClass = item.root_cause === 'INVENTORY_GAP' 
+          ? 'bg-amber-50 text-amber-900 border-amber-200' 
+          : 'bg-rose-50 text-rose-800 border-rose-200';
+
+        return `
+          <tr onclick="selectOpportunity('${escapeHtml(item.query_id)}')" 
+              class="cursor-pointer group transition-colors ${isSelected ? 'bg-rose-50/60 font-semibold text-slate-900 border-l-4 border-l-[#E83E4F]' : 'hover:bg-stone-50'}">
+            <td class="py-3 px-3">
+              <span class="text-slate-900 group-hover:text-[#E83E4F] transition-colors font-sans">${escapeHtml(item.query)}</span>
+            </td>
+            <td class="py-3 px-3">
+              <span class="inline-flex px-2 py-0.5 rounded text-[10px] border ${badgeClass}">
+                ${rootCauseLabel}
+              </span>
+            </td>
+            <td class="py-3 px-3 text-right text-slate-800">${window.CatalogIQ_Format.compactNumber(item.search_volume)}</td>
+            <td class="py-3 px-3 text-right text-slate-700">${(item.ctr * 100).toFixed(1)}%</td>
+            <td class="py-3 px-3 text-right text-slate-700">${(item.conversion_rate * 100).toFixed(1)}%</td>
+            <td class="py-3 px-3 text-right">
+              <span class="${covPct < 60 ? 'text-[#E83E4F] font-bold' : 'text-emerald-600'}">${covPct}%</span>
+            </td>
+            <td class="py-3 pl-3 text-right">
+              <span class="font-bold font-display text-slate-900 text-sm">${score}</span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function selectOpportunity(queryId) {
+      const newUrl = `${window.location.pathname}?query_id=${encodeURIComponent(queryId)}`;
+      window.history.pushState({ path: newUrl }, '', newUrl);
+      loadSearchDetail(queryId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // =========================================================================
+    // EMAIL ALERT MODAL LOGIC
+    // =========================================================================
+    function openEmailAlertModal() {
+      if (!currentDetail) return;
+      const modal = document.getElementById('email-alert-modal');
+      const feedback = document.getElementById('modal-feedback');
+      feedback.className = 'hidden p-3 rounded-lg text-xs font-mono';
+      feedback.textContent = '';
+
+      document.getElementById('modal-query-text').textContent = currentDetail.query;
+      document.getElementById('modal-score-text').textContent = currentDetail.opportunity_score.toFixed(1);
+      document.getElementById('modal-volume-text').textContent = currentDetail.search_volume.toLocaleString();
+      document.getElementById('modal-coverage-text').textContent = `${Math.round(currentDetail.catalog_coverage * 100)}%`;
+      document.getElementById('modal-root-cause-text').textContent = CatalogIQ_Format.rootCauseLabel(currentDetail.root_cause);
+      document.getElementById('modal-affected-text').textContent = currentDetail.affected_products;
+      document.getElementById('alert-recipient-input').value = 'catalog-team@catalogiq.demo';
+
+      const sendBtn = document.getElementById('send-alert-btn');
+      sendBtn.disabled = false;
+      sendBtn.innerHTML = `
+        <span class="material-symbols-outlined text-[16px]">send</span>
+        <span>Send Alert</span>
+      `;
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeEmailAlertModal() {
+      document.getElementById('email-alert-modal').classList.add('hidden');
+    }
+
+    function handleSendAlert() {
+      if (!currentDetail) return;
+
+      const recipient = document.getElementById('alert-recipient-input').value;
+      const feedback = document.getElementById('modal-feedback');
+      const sendBtn = document.getElementById('send-alert-btn');
+
+      const alertPayload = {
+        query: currentDetail.query,
+        query_id: currentDetail.query_id,
+        opportunity_score: currentDetail.opportunity_score,
+        search_volume: currentDetail.search_volume,
+        coverage: `${Math.round(currentDetail.catalog_coverage * 100)}%`,
+        root_cause: CatalogIQ_Format.rootCauseLabel(currentDetail.root_cause),
+        affected_products: currentDetail.affected_products,
+        recommended_action: currentDetail.recommended_action
+      };
+
+      const result = CatalogIQ_Alerts.sendCatalogAlert(alertPayload, recipient);
+
+      if (!result.success) {
+        feedback.className = 'p-3 rounded-lg text-xs font-mono bg-rose-50 text-rose-800 border border-rose-200';
+        feedback.textContent = result.error;
+        feedback.classList.remove('hidden');
+        return;
+      }
+
+      // Success State
+      feedback.className = 'p-3 rounded-lg text-xs font-mono bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-2';
+      feedback.innerHTML = `
+        <span class="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+        <span>Alert queued successfully</span>
+      `;
+      feedback.classList.remove('hidden');
+
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = `
+        <span class="material-symbols-outlined text-[16px]">done</span>
+        <span>Queued</span>
+      `;
+
+      updateAlertBadge();
+
+      // Close modal after 1.2s
+      setTimeout(() => {
+        closeEmailAlertModal();
+      }, 1200);
+    }
+
+    // =========================================================================
+    // ALERT HISTORY MODAL LOGIC
+    // =========================================================================
+    function openAlertHistoryModal() {
+      const modal = document.getElementById('alert-history-modal');
+      const tableContainer = document.getElementById('alert-history-table-container');
+      const history = CatalogIQ_Alerts.getHistory();
+
+      if (history.length === 0) {
+        tableContainer.innerHTML = `
+          <div class="p-8 text-center space-y-2">
+            <span class="material-symbols-outlined text-4xl text-slate-300">notifications_off</span>
+            <p class="text-xs font-mono text-slate-500">No alerts have been queued in this session yet.</p>
+            <p class="text-[11px] text-slate-400">Trigger an alert from any high-priority query above.</p>
+          </div>
+        `;
+      } else {
+        tableContainer.innerHTML = `
+          <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left text-xs font-mono">
+              <thead>
+                <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-stone-200">
+                  <th class="py-2 px-2 font-semibold">Date</th>
+                  <th class="py-2 px-2 font-semibold">Query</th>
+                  <th class="py-2 px-2 font-semibold">Priority</th>
+                  <th class="py-2 px-2 font-semibold text-right">Score</th>
+                  <th class="py-2 px-2 font-semibold">Recipient</th>
+                  <th class="py-2 pl-2 font-semibold text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100">
+                ${history.map(item => `
+                  <tr class="hover:bg-stone-50/80">
+                    <td class="py-2.5 px-2 text-slate-500 whitespace-nowrap">${escapeHtml(item.date)}</td>
+                    <td class="py-2.5 px-2 font-sans font-semibold text-slate-900">${escapeHtml(item.query)}</td>
+                    <td class="py-2.5 px-2">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.priority === 'Critical' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">
+                        ${escapeHtml(item.priority)}
+                      </span>
+                    </td>
+                    <td class="py-2.5 px-2 text-right font-bold text-slate-800">${item.opportunity_score}</td>
+                    <td class="py-2.5 px-2 text-slate-600 truncate max-w-[150px]" title="${escapeHtml(item.recipient)}">${escapeHtml(item.recipient)}</td>
+                    <td class="py-2.5 pl-2 text-right">
+                      <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        ${escapeHtml(item.status)}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeAlertHistoryModal() {
+      document.getElementById('alert-history-modal').classList.add('hidden');
+      updateAlertBadge();
+    }
+
+    function updateAlertBadge() {
+      const history = CatalogIQ_Alerts.getHistory();
+      const badge = document.getElementById('alert-history-badge');
+      if (badge) {
+        if (history.length > 0) {
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>

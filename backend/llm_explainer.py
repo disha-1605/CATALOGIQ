@@ -41,7 +41,7 @@ def generate_template_fallback_explanation(data: Dict[str, Any]) -> str:
             f"The search query '{query}' generates {volume:,} monthly impressions with a low CTR of {ctr_pct}% "
             f"and conversion rate of {cvr_pct}%. While relevant inventory exists, discovery coverage is restricted "
             f"to {cov_pct}% because {affected} catalog products are missing {missing_str} tags. "
-            f"This represents an opportunity score of {opp_score}/100, and enriching these metadata attributes will "
+            f"This attribute gap represents an opportunity score of {opp_score}/100, and enriching these metadata attributes will "
             f"immediately restore search discoverability."
         )
     elif root_cause == "INVENTORY_GAP":

@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FBF7F3]">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CatalogIQ — Fashion Commerce Product Intelligence</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Space+Grotesk:wght@600;700&display=swap"
+    rel="stylesheet" />
+
+  <!-- Icons -->
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            display: ['Space Grotesk', 'sans-serif'],
+            serif: ['Newsreader', 'Georgia', 'serif'],
+          },
+          colors: {
+            base: '#FBF7F3',
+            surface: '#FFFFFF',
+            structure: '#101827',
+            fashion: '#E83E4F',
+            'fashion-warm': '#F97316',
+            'coral-soft': '#FDE7E7',
+            'peach-soft': '#FFF0E8',
+            'lavender-soft': '#F0EAFB',
+            slate: {
+              850: '#172033',
+              900: '#111827',
+              950: '#0B0F19'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    .font-mono-num {
+      font-feature-settings: 'tnum' on, 'lnum' on;
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .fashion-gradient {
+      background: linear-gradient(135deg, #FFF0E8 0%, #FDE7E7 50%, #F5ECFD 100%);
+    }
+  </style>
+  <script src="api.js"></script>
+  <script>
+    // Enforce authentication before page renders
+    CatalogIQ_Auth.requireAuth();
+  </script>
+</head>
+
+<body
+  class="h-full bg-[#FBF7F3] text-slate-900 antialiased flex flex-col lg:flex-row selection:bg-[#FDE7E7] selection:text-[#E83E4F]">
+
+  <!-- ========================================================================= -->
+  <!-- 1. DESKTOP SIDEBAR NAVIGATION (>= 1024px) -->
+  <!-- ========================================================================= -->
+  <aside
+    class="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 bg-[#101827] text-slate-300 z-50 border-r border-slate-800/80 justify-between">
+    <div>
+      <!-- Brand / Header -->
+      <div class="p-5 border-b border-slate-800/80 flex items-center gap-3">
+        <div
+          class="w-8 h-8 rounded-lg bg-[#E83E4F] flex items-center justify-center text-white font-display font-bold text-base shadow-sm shrink-0">
+          Q
+        </div>
+        <div>
+          <span class="font-display font-bold text-base text-white tracking-tight">CatalogIQ</span>
+          <span class="block text-[9px] font-mono uppercase tracking-wider text-slate-400">Search to Catalog
+            Intelligence</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="px-3.5 py-5 space-y-1.5">
+        <a href="dashboard.html"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#2D1A24] text-white border border-[#E83E4F]/30 font-medium text-xs tracking-tight transition-all shadow-xs">
+          <span class="material-symbols-outlined text-[18px] text-[#E83E4F]">dashboard</span>
+          <span>Overview</span>
+        </a>
+
+        <a href="search-intelligence.html"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium text-xs tracking-tight transition-all">
+          <span class="material-symbols-outlined text-[18px]">radar</span>
+          <span>Search Intelligence</span>
+        </a>
+
+        <a href="product-audit.html"
+          class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium text-xs tracking-tight transition-all">
+          <span class="material-symbols-outlined text-[18px]">fact_check</span>
+          <span>Product Audit</span>
+        </a>
+
+        <!-- Insights Focus Section -->
+        <div class="pt-6 px-3 pb-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400">Insights
+        </div>
+
+        <a href="search-intelligence.html?root_cause=ATTRIBUTE_GAP"
+          class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-[#E83E4F]"></span>
+            <span>High Impact</span>
+          </span>
+          <span id="sidebar-attr-count" class="font-mono text-[11px] text-slate-400 font-semibold">22</span>
+        </a>
+
+        <a href="search-intelligence.html?root_cause=INVENTORY_GAP"
+          class="flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+            <span>Needs Attention</span>
+          </span>
+          <span id="sidebar-inv-count" class="font-mono text-[11px] text-slate-400 font-semibold">12</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Sidebar Bottom: Silhouette Watermark & Status -->
+    <div class="p-4 border-t border-slate-800/80 bg-slate-950/60 relative overflow-hidden">
+      <div class="mb-3">
+        <p class="text-xs font-serif italic text-slate-400 leading-snug">Better catalog.<br />Brighter fashion.</p>
+      </div>
+      <div class="flex items-center justify-between mb-1.5">
+        <span
+          class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-[10px]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Live DB
+        </span>
+      </div>
+      <p class="text-[10px] text-slate-400 font-mono">40 queries · 200 products</p>
+      <p class="text-[9px] text-slate-400 font-mono">Last updated 2 mins ago</p>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- 2. TOP BAR & SEARCH HEADER (Desktop & Mobile) -->
+  <!-- ========================================================================= -->
+  <div class="flex-1 lg:ml-60 flex flex-col min-h-screen">
+
+    <!-- Top Bar -->
+    <header
+      class="sticky top-0 z-40 bg-[#FBF7F3]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 flex items-center justify-between">
+      <!-- Mobile Brand -->
+      <div class="lg:hidden flex items-center gap-2.5">
+        <div
+          class="w-7 h-7 rounded-lg bg-[#E83E4F] flex items-center justify-center text-white font-display font-bold text-sm">
+          Q</div>
+        <span class="font-display font-bold text-base text-slate-900 tracking-tight">CatalogIQ</span>
+      </div>
+
+      <!-- Desktop Search Bar -->
+      <div class="hidden sm:flex items-center w-full max-w-md relative">
+        <span class="material-symbols-outlined text-slate-400 absolute left-3 text-[18px]">search</span>
+        <input type="text" id="global-search-input" placeholder="Search queries, products, or keywords..."
+          class="w-full pl-9 pr-12 py-1.5 text-xs bg-white border border-stone-300/80 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#E83E4F] focus:ring-1 focus:ring-[#E83E4F]/20 shadow-2xs font-sans transition-all" />
+        <kbd
+          class="absolute right-2.5 px-1.5 py-0.5 text-[10px] font-mono bg-stone-100 text-slate-400 rounded border border-stone-200">⌘
+          K</kbd>
+      </div>
+
+      <!-- Right Profile & Account Area -->
+      <div class="flex items-center gap-3">
+        <button onclick="openAlertHistoryModal()"
+          class="p-1.5 rounded-full text-slate-500 hover:text-slate-800 hover:bg-stone-100 transition-colors relative"
+          title="View Alert History">
+          <span class="material-symbols-outlined text-[20px]">notifications</span>
+          <span id="alert-history-badge" class="hidden absolute top-1 right-1 w-2 h-2 rounded-full bg-[#E83E4F]"></span>
+        </button>
+        <div id="user-account-badge"></div>
+      </div>
+    </header>
+
+    <!-- ======================================================================= -->
+    <!-- 3. MAIN DASHBOARD CONTENT -->
+    <!-- ======================================================================= -->
+    <main
+      class="flex-1 w-full max-w-[1440px] px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-8 mx-auto space-y-7 pb-24 lg:pb-12">
+
+      <!-- HERO HEADER: Editorial Headline + Fashion Accent Card -->
+      <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2">
+        <div class="space-y-1.5 max-w-2xl">
+          <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-[#E83E4F]">
+            CATALOG INTELLIGENCE
+          </span>
+          <h1
+            class="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-900 font-display leading-[1.1]">
+            Where should we <span class="text-[#E83E4F]">fix the catalog?</span>
+          </h1>
+          <p class="text-sm sm:text-base text-slate-600 font-normal pt-1">
+            Turn search demand into discoverability with better catalog data.
+          </p>
+        </div>
+
+        <!-- Fashion Editorial Card (Right side) -->
+        <div
+          class="hidden sm:flex items-center gap-4 bg-gradient-to-r from-[#FFF0E8] via-[#FDE7E7] to-[#F3E8FF] p-3 rounded-2xl border border-rose-200/60 shadow-2xs">
+          <div class="relative w-16 h-20 rounded-xl overflow-hidden shadow-xs shrink-0">
+            <img src="assets/fashion_hero.jpg" alt="Fashion lookbook model"
+              class="w-full h-full object-cover object-top" />
+          </div>
+          <div class="pr-3 space-y-1">
+            <p class="font-serif italic text-xs text-slate-800 leading-snug">"Great fashion<br />should be easy to
+              find."</p>
+            <span class="inline-block text-[9px] font-mono uppercase tracking-widest text-[#E83E4F] font-bold">Discover
+              More Fashion</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 CORE KPI CARDS GRID -->
+      <section class="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4" id="kpi-section">
+
+        <!-- Card 1: Products Audited -->
+        <div
+          class="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200/90 shadow-2xs flex items-center justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <span class="material-symbols-outlined text-[#E83E4F] text-[16px]">inventory_2</span>
+              <span>Products Audited</span>
+            </div>
+            <div id="kpi-total-products"
+              class="text-2xl sm:text-3xl font-bold font-display text-slate-900 font-mono-num">200</div>
+            <p class="text-[11px] text-slate-600 font-mono">10 core fashion categories</p>
+          </div>
+          <div
+            class="hidden sm:block w-10 h-14 rounded-lg bg-stone-100 border border-stone-200/60 overflow-hidden shrink-0">
+            <img src="assets/fashion_hero.jpg" alt="Category thumbnail"
+              class="w-full h-full object-cover object-top opacity-90" />
+          </div>
+        </div>
+
+        <!-- Card 2: Average Health Score -->
+        <div
+          class="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200/90 shadow-2xs flex items-center justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <span class="material-symbols-outlined text-[#E83E4F] text-[16px]">verified</span>
+              <span>Average Health Score</span>
+            </div>
+            <div class="flex items-baseline gap-1">
+              <span id="kpi-avg-health"
+                class="text-2xl sm:text-3xl font-bold font-display text-slate-900 font-mono-num">90.3</span>
+              <span class="text-xs text-slate-600 font-mono">/100</span>
+            </div>
+            <p class="text-[11px] text-emerald-700 font-mono font-medium flex items-center gap-1">
+              <span>▲</span> <span>+12% vs last audit</span>
+            </p>
+          </div>
+          <!-- Donut Score Mini Ring -->
+          <div class="w-10 h-10 relative flex items-center justify-center shrink-0">
+            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+              <path class="text-stone-100" stroke-width="4" stroke="currentColor" fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="text-emerald-500" stroke-dasharray="90, 100" stroke-width="4" stroke-linecap="round"
+                stroke="currentColor" fill="none"
+                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+          </div>
+        </div>
+
+        <!-- Card 3: Queries Analyzed -->
+        <div
+          class="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200/90 shadow-2xs flex items-center justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <span class="material-symbols-outlined text-[#E83E4F] text-[16px]">search</span>
+              <span>Queries Analyzed</span>
+            </div>
+            <div id="kpi-total-queries"
+              class="text-2xl sm:text-3xl font-bold font-display text-slate-900 font-mono-num">40</div>
+            <p id="kpi-search-volume" class="text-[11px] text-slate-600 font-mono">230.1k monthly impressions</p>
+          </div>
+          <!-- Mini Sparkline Bars -->
+          <div class="flex items-end gap-1 h-7 shrink-0">
+            <div class="w-1.5 bg-rose-200 rounded-t h-3"></div>
+            <div class="w-1.5 bg-rose-300 rounded-t h-5"></div>
+            <div class="w-1.5 bg-rose-400 rounded-t h-4"></div>
+            <div class="w-1.5 bg-[#E83E4F] rounded-t h-7"></div>
+          </div>
+        </div>
+
+        <!-- Card 4: Priority Opportunities -->
+        <div
+          class="bg-white rounded-2xl p-4 sm:p-5 border border-stone-200/90 shadow-2xs flex items-center justify-between">
+          <div class="space-y-1">
+            <div class="flex items-center gap-1.5 text-xs text-slate-600 font-medium">
+              <span class="material-symbols-outlined text-[#E83E4F] text-[16px]">auto_awesome</span>
+              <span>Priority Opportunities</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="kpi-total-gaps"
+                class="text-2xl sm:text-3xl font-bold font-display text-[#E83E4F] font-mono-num">34</span>
+              <span
+                class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-100 text-rose-800 uppercase">High
+                impact</span>
+            </div>
+            <p class="text-[11px] text-slate-600 font-mono">Actionable catalog gaps</p>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- TODAY'S FOCUS HERO + ANALYTICS WIDGETS ROW -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Today's Focus Card (7 cols on lg) -->
+        <div
+          class="lg:col-span-6 fashion-gradient rounded-2xl p-6 sm:p-7 border border-rose-200/80 shadow-xs flex flex-col justify-between relative overflow-hidden">
+          <div class="space-y-3 z-10 max-w-md">
+            <div class="flex items-center gap-2">
+              <span class="flex items-center justify-center w-5 h-5 rounded-full bg-[#E83E4F] text-white text-xs">
+                <span class="material-symbols-outlined text-[13px]">bolt</span>
+              </span>
+              <span class="font-mono text-xs font-bold uppercase tracking-wider text-slate-800">Today's Focus</span>
+              <span
+                class="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-rose-200/70 text-rose-900 uppercase">High
+                Impact</span>
+            </div>
+
+            <h2 id="focus-query-title"
+              class="text-xl sm:text-2xl font-bold font-display text-slate-900 tracking-tight leading-snug">
+              "oversized t shirt men"
+            </h2>
+
+            <p id="focus-query-desc" class="text-xs sm:text-sm text-slate-600 font-mono leading-relaxed">
+              9,200 searches · 6% coverage · 17 listings to fix
+            </p>
+
+            <div class="pt-2">
+              <a id="focus-investigate-btn" href="search-intelligence.html?query_id=Q002"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#E83E4F] hover:bg-[#D42B3C] text-white text-xs sm:text-sm font-semibold transition-all shadow-xs">
+                <span>Investigate Query</span>
+                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- Folded T-shirt Visual & Handwriting accent -->
+          <div class="hidden sm:block absolute right-4 bottom-4 w-36 sm:w-44 z-0 pointer-events-none">
+            <img src="assets/folded_tshirt.jpg" alt="Folded t-shirt"
+              class="w-full rounded-xl shadow-xs border border-white/60" />
+            <p class="font-serif italic text-xs text-[#E83E4F] text-center mt-1">Better discovery.<br />More sales.</p>
+          </div>
+        </div>
+
+        <!-- Catalog Health Distribution (3 cols on lg) -->
+        <div
+          class="lg:col-span-3 bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs space-y-3 flex flex-col justify-between">
+          <div class="flex items-center justify-between border-b border-stone-100 pb-2">
+            <h3 class="font-display text-xs font-bold text-slate-900 uppercase tracking-wider">Catalog Health
+              Distribution</h3>
+          </div>
+
+          <!-- Donut Ring with Multi-Segments -->
+          <div class="flex items-center justify-center py-1">
+            <div class="relative w-24 h-24 flex items-center justify-center">
+              <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <!-- Segment 1: Excellent (71%) -->
+                <path stroke-dasharray="71, 100" stroke-dashoffset="0" class="text-emerald-500" stroke-width="4.5"
+                  stroke="currentColor" fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <!-- Segment 2: Good (17%) -->
+                <path stroke-dasharray="17, 100" stroke-dashoffset="-71" class="text-sky-500" stroke-width="4.5"
+                  stroke="currentColor" fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <!-- Segment 3: Needs Attention (9.5%) -->
+                <path stroke-dasharray="9.5, 100" stroke-dashoffset="-88" class="text-amber-500" stroke-width="4.5"
+                  stroke="currentColor" fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <!-- Segment 4: Critical (2.5%) -->
+                <path stroke-dasharray="2.5, 100" stroke-dashoffset="-97.5" class="text-rose-500" stroke-width="4.5"
+                  stroke="currentColor" fill="none"
+                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <div class="absolute inset-0 flex flex-col items-center justify-center">
+                <span class="font-display text-base font-bold text-slate-900 font-mono-num">200</span>
+                <span class="text-[9px] font-mono text-slate-400 uppercase">products</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tier List Legend -->
+          <div class="space-y-1 text-[11px] font-mono text-slate-600">
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                Excellent (85-100)</span>
+              <strong class="text-slate-900 font-mono-num">142 (71%)</strong>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-500"></span> Good
+                (70-84)</span>
+              <strong class="text-slate-900 font-mono-num">34 (17%)</strong>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Needs
+                Attention</span>
+              <strong class="text-slate-900 font-mono-num">19 (10%)</strong>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-rose-500"></span> Critical
+                (&lt; 50)</span>
+              <strong class="text-slate-900 font-mono-num">5 (2%)</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Root Cause Classification (3 cols on lg) -->
+        <div
+          class="lg:col-span-3 bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs space-y-3.5 flex flex-col justify-between">
+          <div class="flex items-center justify-between border-b border-stone-100 pb-2">
+            <h3 class="font-display text-xs font-bold text-slate-900 uppercase tracking-wider">Root Cause Classification
+            </h3>
+            <span class="text-[10px] font-mono text-slate-400">40 queries</span>
+          </div>
+
+          <div class="space-y-3 text-xs pt-1">
+            <!-- Attribute Gap -->
+            <div class="space-y-1">
+              <div class="flex justify-between font-mono">
+                <span class="text-slate-700 font-medium">Attribute Gap</span>
+                <span class="text-slate-900 font-bold">22 (55%)</span>
+              </div>
+              <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div class="bg-[#E83E4F] h-full rounded-full" style="width: 55%;"></div>
+              </div>
+            </div>
+
+            <!-- Inventory Gap -->
+            <div class="space-y-1">
+              <div class="flex justify-between font-mono">
+                <span class="text-slate-700 font-medium">Inventory Gap</span>
+                <span class="text-slate-900 font-bold">12 (30%)</span>
+              </div>
+              <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div class="bg-amber-500 h-full rounded-full" style="width: 30%;"></div>
+              </div>
+            </div>
+
+            <!-- No Catalog Gap -->
+            <div class="space-y-1">
+              <div class="flex justify-between font-mono">
+                <span class="text-slate-700 font-medium">No Catalog Gap</span>
+                <span class="text-slate-900 font-bold">6 (15%)</span>
+              </div>
+              <div class="w-full h-2 bg-stone-100 rounded-full overflow-hidden">
+                <div class="bg-emerald-500 h-full rounded-full" style="width: 15%;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ========================================================================= -->
+      <!-- NEEDS ATTENTION SECTION (PART 5 REQUIREMENT) -->
+      <!-- ========================================================================= -->
+      <section class="bg-white rounded-2xl p-5 sm:p-6 border border-rose-200/80 shadow-xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-stone-100">
+          <div class="flex items-center gap-2.5">
+            <div class="w-8 h-8 rounded-xl bg-rose-100 text-[#E83E4F] flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-[20px]">warning</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="font-display text-base font-bold text-slate-900 tracking-tight">Needs Attention</h2>
+                <span
+                  class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-100 text-rose-800 uppercase">Immediate
+                  Action</span>
+              </div>
+              <p class="text-xs text-slate-500">Searches with severe catalog gaps requiring immediate catalog team
+                intervention</p>
+            </div>
+          </div>
+          <a href="search-intelligence.html"
+            class="text-xs font-semibold text-[#E83E4F] hover:underline flex items-center gap-0.5 self-start sm:self-auto">
+            <span>Investigate All Searches</span>
+            <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+          </a>
+        </div>
+
+        <!-- Needs Attention Cards / Rows -->
+        <div id="needs-attention-container" class="grid grid-cols-1 gap-3">
+          <div class="p-6 text-center text-xs font-mono text-slate-400 animate-pulse">
+            Loading high-priority catalog attention searches...
+          </div>
+        </div>
+      </section>
+
+      <!-- TOP OPPORTUNITIES RANKED TABLE + EDITORIAL QUOTE -->
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-5 pt-2">
+
+        <!-- Table Area (9 cols on lg) -->
+        <div class="lg:col-span-9 bg-white rounded-2xl p-5 sm:p-6 border border-stone-200/90 shadow-2xs space-y-4">
+          <div class="flex items-center justify-between pb-1">
+            <div>
+              <h2 class="font-display text-base font-bold text-slate-900 tracking-tight">Top Opportunities</h2>
+              <p class="text-xs text-slate-500">Search problems with the strongest catalog-driven improvement potential
+              </p>
+            </div>
+            <a href="search-intelligence.html"
+              class="text-xs font-semibold text-[#E83E4F] hover:underline flex items-center gap-0.5">
+              <span>View all 40 queries</span>
+              <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+            </a>
+          </div>
+
+          <!-- Ranked Table -->
+          <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left text-xs font-mono">
+              <thead>
+                <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-stone-100">
+                  <th class="py-2.5 pr-2 font-semibold">#</th>
+                  <th class="py-2.5 px-3 font-semibold">Query</th>
+                  <th class="py-2.5 px-3 font-semibold">Root Cause</th>
+                  <th class="py-2.5 px-3 font-semibold text-right">Search Volume</th>
+                  <th class="py-2.5 px-3 font-semibold text-right">Catalog Coverage</th>
+                  <th class="py-2.5 px-3 font-semibold text-right">Affected Listings</th>
+                  <th class="py-2.5 pl-3 font-semibold text-right">Opportunity Score</th>
+                </tr>
+              </thead>
+              <tbody id="top-opportunities-tbody" class="divide-y divide-stone-100">
+                <!-- Dynamic Rows loaded from API -->
+                <tr>
+                  <td colspan="7" class="py-6 text-center text-slate-400 animate-pulse">Loading ranked opportunities...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Editorial Insight Card (3 cols on lg) -->
+        <div
+          class="lg:col-span-3 bg-gradient-to-br from-[#FFF0E8] via-[#FDE7E7] to-[#FCE7F3] rounded-2xl p-6 border border-rose-200/70 shadow-2xs flex flex-col justify-between space-y-4">
+          <div class="space-y-2">
+            <span class="text-3xl font-serif text-[#E83E4F] font-bold block leading-none">“</span>
+            <p class="font-serif italic text-sm sm:text-base text-[#E83E4F] leading-relaxed"
+              style="color:#E83E4F !important;">
+              Small catalog fixes can unlock a big difference in how people discover fashion.
+            </p>
+          </div>
+          <div class="pt-3 border-t border-rose-200/50 flex items-center gap-2">
+            <div
+              class="w-5 h-5 rounded-full bg-[#E83E4F] text-white flex items-center justify-center text-[10px] font-bold">
+              Q</div>
+            <span class="text-[10px] font-mono uppercase tracking-widest text-[#E83E4F] font-bold">CatalogIQ
+              Intelligence</span>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Mobile Navigation Bar (< 1024px) -->
+    <nav
+      class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#101827] border-t border-slate-800 px-6 py-2.5 flex justify-around items-center text-xs shadow-lg">
+      <a href="dashboard.html" class="flex flex-col items-center gap-1 text-[#E83E4F] font-bold">
+        <span class="material-symbols-outlined text-[20px]">dashboard</span>
+        <span class="font-mono text-[9px]">Overview</span>
+      </a>
+      <a href="search-intelligence.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+        <span class="material-symbols-outlined text-[20px]">radar</span>
+        <span class="font-mono text-[9px]">Search</span>
+      </a>
+      <a href="product-audit.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+        <span class="material-symbols-outlined text-[20px]">fact_check</span>
+        <span class="font-mono text-[9px]">Audit</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- Alert History Modal -->
+  <div id="alert-history-modal"
+    class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+    <div
+      class="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
+      <!-- Header -->
+      <div class="p-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/70">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-lg bg-rose-100 text-[#E83E4F] flex items-center justify-center">
+            <span class="material-symbols-outlined text-[18px]">history</span>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base text-slate-900 tracking-tight">Alert History</h3>
+            <p class="text-xs text-slate-500 font-mono">Catalog team notifications queued in this session</p>
+          </div>
+        </div>
+        <button onclick="closeAlertHistoryModal()"
+          class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-stone-200/60 transition-colors">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <!-- Table Content -->
+      <div class="p-5 overflow-y-auto flex-1">
+        <div id="alert-history-table-container">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="p-4 bg-stone-50 border-t border-stone-100 flex items-center justify-between">
+        <span class="text-[11px] font-mono text-slate-400">Demo Alert Queue</span>
+        <button onclick="closeAlertHistoryModal()"
+          class="px-4 py-2 bg-stone-200 hover:bg-stone-300 text-slate-800 rounded-xl text-xs font-semibold transition-all">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Data Controller -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 0. Render Account Area
+      CatalogIQ_Auth.renderUserBadge('user-account-badge');
+      updateAlertBadge();
+
+      try {
+        const data = await window.CatalogIQ_API.getDashboard();
+
+        // 1. KPIs
+        document.getElementById('kpi-total-products').textContent = window.CatalogIQ_Format.number(data.total_products);
+        document.getElementById('kpi-avg-health').textContent = data.average_health_score.toFixed(1);
+        document.getElementById('kpi-total-queries').textContent = window.CatalogIQ_Format.number(data.total_search_queries);
+        document.getElementById('kpi-search-volume').textContent = `${window.CatalogIQ_Format.compactNumber(data.total_search_volume)} monthly impressions`;
+
+        const attrCount = (data.root_cause_breakdown && data.root_cause_breakdown.ATTRIBUTE_GAP) || 22;
+        const invCount = (data.root_cause_breakdown && data.root_cause_breakdown.INVENTORY_GAP) || 12;
+        document.getElementById('kpi-total-gaps').textContent = attrCount + invCount;
+
+        const sideAttr = document.getElementById('sidebar-attr-count');
+        const sideInv = document.getElementById('sidebar-inv-count');
+        if (sideAttr) sideAttr.textContent = attrCount;
+        if (sideInv) sideInv.textContent = invCount;
+
+        // 2. Today's Focus
+        const topOpps = data.top_opportunities || [];
+        if (topOpps.length > 0) {
+          const topOne = topOpps[0];
+          document.getElementById('focus-query-title').textContent = `"${topOne.query}"`;
+          document.getElementById('focus-query-desc').textContent =
+            `${topOne.search_volume.toLocaleString()} searches · ${Math.round(topOne.catalog_coverage * 100)}% coverage · ${topOne.affected_products} listings to fix`;
+          document.getElementById('focus-investigate-btn').href = `search-intelligence.html?query_id=${encodeURIComponent(topOne.query_id)}`;
+        }
+
+        // 3. Needs Attention Section (PART 5 Requirement)
+        renderNeedsAttention(topOpps);
+
+        // 4. Ranked Table
+        const tbody = document.getElementById('top-opportunities-tbody');
+        if (topOpps.length > 0) {
+          tbody.innerHTML = topOpps.slice(0, 5).map((item, idx) => {
+            const isTop = idx === 0;
+            const score = item.opportunity_score.toFixed(1);
+            const covPct = Math.round(item.catalog_coverage * 100);
+            const rootCauseLabel = window.CatalogIQ_Format.rootCauseLabel(item.root_cause);
+            const badgeClass = item.root_cause === 'INVENTORY_GAP'
+              ? 'bg-amber-50 text-amber-900 border-amber-200'
+              : 'bg-rose-50 text-rose-800 border-rose-200';
+
+            return `
+              <tr onclick="window.location.href='search-intelligence.html?query_id=${encodeURIComponent(item.query_id)}'" 
+                  class="cursor-pointer group transition-colors ${isTop ? 'bg-rose-50/40 hover:bg-rose-50/70 font-semibold' : 'hover:bg-stone-50'}">
+                <td class="py-3 pr-2">
+                  <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${isTop ? 'bg-[#E83E4F] text-white' : 'bg-stone-100 text-slate-600'}">
+                    ${idx + 1}
+                  </span>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="text-slate-900 group-hover:text-[#E83E4F] transition-colors font-sans">${escapeHtml(item.query)}</span>
+                </td>
+                <td class="py-3 px-3">
+                  <span class="inline-flex px-2 py-0.5 rounded text-[10px] border ${badgeClass}">
+                    ${rootCauseLabel}
+                  </span>
+                </td>
+                <td class="py-3 px-3 text-right text-slate-800">${window.CatalogIQ_Format.compactNumber(item.search_volume)}</td>
+                <td class="py-3 px-3 text-right">
+                  <span class="${covPct < 60 ? 'text-rose-600' : 'text-emerald-600'}">${covPct}%</span>
+                </td>
+                <td class="py-3 px-3 text-right text-slate-700">${item.affected_products}</td>
+                <td class="py-3 pl-3 text-right">
+                  <div class="flex items-center justify-end gap-2">
+                    <span class="font-bold text-slate-900 text-sm font-display">${score}</span>
+                    <div class="w-12 h-1.5 bg-stone-100 rounded-full overflow-hidden shrink-0">
+                      <div class="bg-[#E83E4F] h-full rounded-full" style="width: ${Math.min(100, Math.round(item.opportunity_score))}%;"></div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+      }
+    });
+
+    function renderNeedsAttention(topOpps) {
+      const container = document.getElementById('needs-attention-container');
+      if (!container) return;
+
+      // Filter for searches with high priority (score >= 80) or top 3 highest priority
+      const attentionSearches = topOpps.filter(item => item.opportunity_score >= 80);
+      const itemsToRender = attentionSearches.length > 0 ? attentionSearches.slice(0, 4) : topOpps.slice(0, 3);
+
+      if (itemsToRender.length === 0) {
+        container.innerHTML = `<div class="p-4 text-center text-xs font-mono text-slate-400">No urgent searches requiring attention.</div>`;
+        return;
+      }
+
+      container.innerHTML = itemsToRender.map(item => {
+        const priority = CatalogIQ_Priority.fromScore(item.opportunity_score);
+        const rootCauseLabel = CatalogIQ_Format.rootCauseLabel(item.root_cause);
+        const covPct = Math.round(item.catalog_coverage * 100);
+
+        return `
+          <div class="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-stone-50/90 hover:bg-rose-50/30 border border-stone-200/90 transition-all gap-4">
+            <div class="flex items-start sm:items-center gap-3 min-w-0">
+              <span class="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold uppercase tracking-wider shrink-0 ${priority.badgeClass}">
+                ${priority.label}
+              </span>
+              <div class="min-w-0">
+                <a href="search-intelligence.html?query_id=${encodeURIComponent(item.query_id)}" class="text-sm font-bold text-slate-900 hover:text-[#E83E4F] transition-colors font-sans truncate block">
+                  ${escapeHtml(item.query)}
+                </a>
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-mono text-slate-600 mt-0.5">
+                  <span class="inline-flex items-center gap-1 font-semibold text-slate-800">
+                    <span class="material-symbols-outlined text-[14px] text-[#E83E4F]">priority_high</span>
+                    Score: ${item.opportunity_score.toFixed(1)}
+                  </span>
+                  <span>·</span>
+                  <span>${item.search_volume.toLocaleString()} searches</span>
+                  <span>·</span>
+                  <span class="${covPct < 50 ? 'text-rose-600 font-semibold' : ''}">${covPct}% coverage</span>
+                  <span>·</span>
+                  <span class="px-1.5 py-0.5 rounded text-[10px] ${CatalogIQ_Format.rootCauseBadgeClasses(item.root_cause)}">${rootCauseLabel}</span>
+                  <span>·</span>
+                  <span class="text-slate-700 font-medium">${item.affected_products} affected</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="shrink-0 flex items-center">
+              <a href="search-intelligence.html?query_id=${encodeURIComponent(item.query_id)}" 
+                 class="w-full md:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white hover:bg-[#E83E4F] text-slate-800 hover:text-white border border-stone-300/80 hover:border-[#E83E4F] text-xs font-semibold font-mono transition-all shadow-2xs">
+                <span>View Analysis</span>
+                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+              </a>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function openAlertHistoryModal() {
+      const modal = document.getElementById('alert-history-modal');
+      const tableContainer = document.getElementById('alert-history-table-container');
+      const history = CatalogIQ_Alerts.getHistory();
+
+      if (history.length === 0) {
+        tableContainer.innerHTML = `
+          <div class="p-8 text-center space-y-2">
+            <span class="material-symbols-outlined text-4xl text-slate-300">notifications_off</span>
+            <p class="text-xs font-mono text-slate-500">No alerts have been queued in this session yet.</p>
+            <p class="text-[11px] text-slate-400">Trigger an alert from any high-priority query in Search Intelligence.</p>
+          </div>
+        `;
+      } else {
+        tableContainer.innerHTML = `
+          <div class="overflow-x-auto no-scrollbar">
+            <table class="w-full text-left text-xs font-mono">
+              <thead>
+                <tr class="text-[10px] uppercase tracking-wider text-slate-400 border-b border-stone-200">
+                  <th class="py-2 px-2 font-semibold">Date</th>
+                  <th class="py-2 px-2 font-semibold">Query</th>
+                  <th class="py-2 px-2 font-semibold">Priority</th>
+                  <th class="py-2 px-2 font-semibold text-right">Score</th>
+                  <th class="py-2 px-2 font-semibold">Recipient</th>
+                  <th class="py-2 pl-2 font-semibold text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-stone-100">
+                ${history.map(item => `
+                  <tr class="hover:bg-stone-50/80">
+                    <td class="py-2.5 px-2 text-slate-500 whitespace-nowrap">${escapeHtml(item.date)}</td>
+                    <td class="py-2.5 px-2 font-sans font-semibold text-slate-900">${escapeHtml(item.query)}</td>
+                    <td class="py-2.5 px-2">
+                      <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.priority === 'Critical' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'}">
+                        ${escapeHtml(item.priority)}
+                      </span>
+                    </td>
+                    <td class="py-2.5 px-2 text-right font-bold text-slate-800">${item.opportunity_score}</td>
+                    <td class="py-2.5 px-2 text-slate-600 truncate max-w-[150px]" title="${escapeHtml(item.recipient)}">${escapeHtml(item.recipient)}</td>
+                    <td class="py-2.5 pl-2 text-right">
+                      <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        ${escapeHtml(item.status)}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeAlertHistoryModal() {
+      document.getElementById('alert-history-modal').classList.add('hidden');
+      updateAlertBadge();
+    }
+
+    function updateAlertBadge() {
+      const history = CatalogIQ_Alerts.getHistory();
+      const badge = document.getElementById('alert-history-badge');
+      if (badge) {
+        if (history.length > 0) {
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+
+</html>

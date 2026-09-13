@@ -1,15 +1,18 @@
 """FastAPI Application for CatalogIQ Backend."""
 
 import json
+import secrets
+from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, Depends, HTTPException, Query
+from fastapi import FastAPI, Depends, HTTPException, Query, Response
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, func
 
-from backend.database import get_db, init_db
-from backend.models import Product, SearchQuery
+from backend.database import get_db, init_db, SessionLocal
+from backend.models import Product, SearchQuery, User, AccessRequest
 from backend.schemas import (
     ProductResponse,
     ProductDetailResponse,
@@ -23,15 +26,71 @@ from backend.schemas import (
     DashboardMetrics,
     ExplainRequest,
     ExplainResponse,
+    AccessRequestCreate,
+    AccessRequestResponse,
+    AccountActivationRequest,
+    LoginRequest,
+    AuthResponse,
+    UserProfile,
+    TestEmailRequest,
 )
 from backend.scoring import evaluate_product_health
 from backend.llm_explainer import generate_llm_explanation
+from backend.auth import (
+    hash_password,
+    verify_password,
+    generate_secure_token,
+    get_token_expiration,
+    is_token_expired,
+)
+from backend.email_service import (
+    send_email,
+    build_admin_notification_email,
+    build_requester_approved_email,
+    build_admin_approved_confirmation_email,
+    build_test_email,
+    ADMIN_NOTIFICATION_EMAIL,
+    API_BASE_URL,
+    APP_BASE_URL,
+)
+
+
+def seed_admin_user():
+    """Ensure the administrator user Disha (dishasengar1june@gmail.com) exists with PBKDF2 hash of 'tuffy'."""
+    db = SessionLocal()
+    try:
+        admin_user = db.query(User).filter(User.email == "dishasengar1june@gmail.com").first()
+        if not admin_user:
+            admin_user = User(
+                user_id="admin-disha-01",
+                name="Disha",
+                email="dishasengar1june@gmail.com",
+                organization="CatalogIQ",
+                role="Administrator",
+                hashed_password=hash_password("tuffy"),
+                is_active=1,
+                is_admin=1,
+                created_at=datetime.utcnow().isoformat(),
+            )
+            db.add(admin_user)
+            db.commit()
+        else:
+            admin_user.is_admin = 1
+            admin_user.is_active = 1
+            admin_user.name = "Disha"
+            admin_user.role = "Administrator"
+            admin_user.organization = "CatalogIQ"
+            admin_user.hashed_password = hash_password("tuffy")
+            db.commit()
+    finally:
+        db.close()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ensure database tables exist on startup."""
+    """Ensure database tables exist and admin user is seeded on startup."""
     init_db()
+    seed_admin_user()
     yield
 
 
@@ -80,6 +139,8 @@ def _format_product(prod: Product) -> Dict[str, Any]:
         "category_consistency_score": prod.category_consistency_score,
         "missing_attributes": missing_attrs,
         "quality_issues": quality_issues,
+        "image_url": prod.image_url,
+        "injected_defect": prod.injected_defect,
     }
 
 
@@ -197,7 +258,9 @@ def list_products(
     query = db.query(Product)
     
     if category:
-        query = query.filter(Product.category.ilike(f"%{category}%"))
+        cat_clean = category.strip()
+        cat_base = cat_clean.rstrip("sS") if len(cat_clean) > 3 and cat_clean.lower() != "dress" else cat_clean
+        query = query.filter((Product.category.ilike(f"%{cat_clean}%")) | (Product.category.ilike(f"%{cat_base}%")))
     if gender:
         query = query.filter(Product.gender.ilike(f"%{gender}%"))
     if health_classification:
@@ -417,4 +480,452 @@ def explain_search_query(payload: ExplainRequest, db: Session = Depends(get_db))
         source=explanation_result["source"],
         model=explanation_result["model"],
     )
+
+
+# ==========================================
+# 6. Authentication & Access Requests
+# ==========================================
+
+@app.post("/api/auth/login", response_model=AuthResponse, tags=["Auth"])
+def login(payload: LoginRequest, db: Session = Depends(get_db)):
+    """
+    Authenticate user. Supports both the demo admin account
+    and real database-activated users.
+    """
+    email_clean = (payload.email or "").strip().lower()
+    password_clean = payload.password or ""
+
+    # 1. Demo Admin Account Check
+    if email_clean == "admin@catalogiq.demo" and password_clean == "catalogiq123":
+        return AuthResponse(
+            success=True,
+            user=UserProfile(
+                user_id="admin-01",
+                name="Adarsh",
+                email="admin@catalogiq.demo",
+                organization="CatalogIQ",
+                role="Catalog Manager",
+                is_admin=True,
+            ),
+            token="demo-session-token",
+            message="Logged in successfully as Demo Administrator.",
+        )
+
+    # 2. Database User Check
+    user = db.query(User).filter(User.email == email_clean, User.is_active == 1).first()
+    if user and verify_password(password_clean, user.hashed_password):
+        return AuthResponse(
+            success=True,
+            user=UserProfile(
+                user_id=user.user_id,
+                name=user.name,
+                email=user.email,
+                organization=user.organization,
+                role=user.role,
+                is_admin=bool(user.is_admin),
+            ),
+            token=f"sess-{secrets.token_hex(16)}",
+            message="Logged in successfully.",
+        )
+
+    raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+
+@app.post("/api/access-requests", tags=["Access Requests"])
+def create_access_request(payload: AccessRequestCreate, db: Session = Depends(get_db)):
+    """
+    Submit a new enterprise access request.
+    Generates a secure single-use approval token and dispatches a notification email to the admin.
+    """
+    name_clean = payload.name.strip()
+    email_clean = payload.email.strip().lower()
+    org_clean = payload.organization.strip()
+    role_clean = (payload.role or "Catalog Operations").strip()
+
+    # Check if active user already exists
+    existing_user = db.query(User).filter(User.email == email_clean).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
+
+    # Check if there is already a pending request
+    existing_pending = db.query(AccessRequest).filter(
+        AccessRequest.email == email_clean,
+        AccessRequest.status == "PENDING"
+    ).first()
+    if existing_pending:
+        return {
+            "success": True,
+            "message": "An access request for this email is already pending review.",
+            "request_id": existing_pending.request_id,
+            "status": "PENDING",
+        }
+
+    request_id = f"REQ-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(3)}"
+    approval_token = generate_secure_token()
+    token_expires_at = get_token_expiration(48)
+    now_iso = datetime.utcnow().isoformat()
+    now_formatted = datetime.utcnow().strftime("%d %b %Y, %H:%M UTC")
+
+    new_req = AccessRequest(
+        request_id=request_id,
+        name=name_clean,
+        email=email_clean,
+        organization=org_clean,
+        role=role_clean,
+        status="PENDING",
+        approval_token=approval_token,
+        activation_token=None,
+        token_expires_at=token_expires_at,
+        created_at=now_iso,
+        approved_at=None,
+        approved_by=None,
+    )
+    db.add(new_req)
+    db.commit()
+    db.refresh(new_req)
+
+    # Build approval & reject URLs
+    approval_url = f"{API_BASE_URL}/api/access-requests/{request_id}/approve?token={approval_token}"
+    reject_url = f"{API_BASE_URL}/api/access-requests/{request_id}/reject?token={approval_token}"
+
+    # Build and dispatch Admin Email
+    html_body, text_body = build_admin_notification_email(
+        name=name_clean,
+        email=email_clean,
+        organization=org_clean,
+        role=role_clean,
+        request_id=request_id,
+        approval_url=approval_url,
+        reject_url=reject_url,
+        created_at_formatted=now_formatted,
+    )
+    email_res = send_email(
+        to=ADMIN_NOTIFICATION_EMAIL,
+        subject="CatalogIQ — New Access Request",
+        html=html_body,
+        text=text_body,
+    )
+
+    return {
+        "success": True,
+        "message": "Access request submitted successfully.",
+        "request_id": request_id,
+        "email_delivery": email_res.get("message", "Dispatched"),
+    }
+
+
+@app.get("/api/access-requests/{request_id}/approve", response_class=HTMLResponse, tags=["Access Requests"])
+def approve_access_request(request_id: str, token: str = Query(...), db: Session = Depends(get_db)):
+    """
+    Secure admin action to approve an access request.
+    Validates token, updates status to APPROVED, creates activation token,
+    and sends the access-granted activation email to the requester.
+    """
+    req = db.query(AccessRequest).filter(AccessRequest.request_id == request_id).first()
+    if not req:
+        return HTMLResponse(
+            status_code=404,
+            content=_render_action_page(
+                title="Request Not Found",
+                status_badge="NOT FOUND",
+                badge_color="#9B1C1C",
+                heading="Access Request Not Found",
+                message=f"No access request matching ID '{request_id}' was found.",
+            )
+        )
+
+    # Check token match
+    if req.approval_token != token:
+        return HTMLResponse(
+            status_code=403,
+            content=_render_action_page(
+                title="Invalid Approval Link",
+                status_badge="SECURITY ERROR",
+                badge_color="#9B1C1C",
+                heading="Invalid or Expired Approval Link",
+                message="This approval link is invalid, has already been used, or the token does not match.",
+            )
+        )
+
+    # Check expiration
+    if is_token_expired(req.token_expires_at):
+        return HTMLResponse(
+            status_code=400,
+            content=_render_action_page(
+                title="Link Expired",
+                status_badge="EXPIRED",
+                badge_color="#9B1C1C",
+                heading="Approval Link Has Expired",
+                message="This single-use approval link has expired (valid for 48 hours). Please request a new submission.",
+            )
+        )
+
+    # Check status
+    if req.status != "PENDING":
+        return HTMLResponse(
+            status_code=400,
+            content=_render_action_page(
+                title="Already Processed",
+                status_badge="PROCESSED",
+                badge_color="#1E40AF",
+                heading=f"Request Already {req.status}",
+                message=f"This access request has already been marked as {req.status} on {req.approved_at or 'a previous date'}.",
+            )
+        )
+
+    # Approve request and generate single-use activation token
+    activation_token = generate_secure_token()
+    token_expires_at = get_token_expiration(48)
+    now_iso = datetime.utcnow().isoformat()
+    now_formatted = datetime.utcnow().strftime("%d %b %Y, %H:%M UTC")
+
+    req.status = "APPROVED"
+    req.approved_at = now_iso
+    req.approved_by = "Disha"
+    req.activation_token = activation_token
+    req.token_expires_at = token_expires_at
+    req.approval_token = None  # Invalidate approval token (single-use)
+    db.commit()
+
+    # Build activation URL & send requester email
+    activation_url = f"{APP_BASE_URL}/activate.html?token={activation_token}"
+    req_html, req_text = build_requester_approved_email(
+        name=req.name,
+        organization=req.organization,
+        role=req.role or "Catalog Operations",
+        activation_url=activation_url,
+    )
+    requester_email_result = send_email(
+        to=req.email,
+        subject="CatalogIQ — Your Access Has Been Approved",
+        html=req_html,
+        text=req_text,
+    )
+
+    print(f"[CATALOGIQ] Requester activation email result: {requester_email_result}")
+
+    # Send confirmation to admin
+    admin_html, admin_text = build_admin_approved_confirmation_email(
+        name=req.name,
+        email=req.email,
+        organization=req.organization,
+        approved_at_formatted=now_formatted,
+    )
+    send_email(
+        to=ADMIN_NOTIFICATION_EMAIL,
+        subject="CatalogIQ — Access Request Approved",
+        html=admin_html,
+        text=admin_text,
+    )
+
+    return HTMLResponse(
+        content=_render_action_page(
+            title="Access Granted",
+            status_badge="ACCESS GRANTED",
+            badge_color="#03543F",
+            heading="Access Approved Successfully",
+            message=f"Access for <strong>{req.name}</strong> ({req.organization}) has been approved.<br/><br/>An activation email with password setup instructions has been dispatched to <code style='background:#F3F4F6; padding:2px 6px; border-radius:4px;'>{req.email}</code>.",
+            action_btn_text="Return to CatalogIQ",
+            action_btn_url=f"{APP_BASE_URL}/dashboard.html",
+        )
+    )
+
+
+@app.get("/api/access-requests/{request_id}/reject", response_class=HTMLResponse, tags=["Access Requests"])
+def reject_access_request(request_id: str, token: str = Query(...), db: Session = Depends(get_db)):
+    """Decline an access request."""
+    req = db.query(AccessRequest).filter(AccessRequest.request_id == request_id).first()
+    if not req or req.approval_token != token:
+        return HTMLResponse(
+            status_code=403,
+            content=_render_action_page(
+                title="Invalid Link",
+                status_badge="ERROR",
+                badge_color="#9B1C1C",
+                heading="Invalid Link",
+                message="This decline link is invalid or has already been used.",
+            )
+        )
+
+    if req.status != "PENDING":
+        return HTMLResponse(
+            status_code=400,
+            content=_render_action_page(
+                title="Already Processed",
+                status_badge="PROCESSED",
+                badge_color="#1E40AF",
+                heading=f"Request Already {req.status}",
+                message=f"This request has already been marked as {req.status}.",
+            )
+        )
+
+    req.status = "REJECTED"
+    req.approval_token = None
+    req.approved_at = datetime.utcnow().isoformat()
+    req.approved_by = "Disha"
+    db.commit()
+
+    return HTMLResponse(
+        content=_render_action_page(
+            title="Request Declined",
+            status_badge="DECLINED",
+            badge_color="#9B1C1C",
+            heading="Access Request Declined",
+            message=f"The access request for {req.name} ({req.email}) has been marked as declined.",
+            action_btn_text="Return to CatalogIQ",
+            action_btn_url=f"{APP_BASE_URL}/dashboard.html",
+        )
+    )
+
+
+@app.get("/api/access-requests/validate-activation", tags=["Access Requests"])
+def validate_activation_token(token: str = Query(...), db: Session = Depends(get_db)):
+    """Validate activation token for frontend activate.html page."""
+    req = db.query(AccessRequest).filter(
+        AccessRequest.activation_token == token,
+        AccessRequest.status == "APPROVED"
+    ).first()
+    if not req:
+        raise HTTPException(status_code=400, detail="Invalid or expired activation link.")
+    if is_token_expired(req.token_expires_at):
+        raise HTTPException(status_code=400, detail="This activation link has expired (48 hours validity).")
+
+    return {
+        "valid": True,
+        "name": req.name,
+        "email": req.email,
+        "organization": req.organization,
+        "role": req.role,
+    }
+
+
+@app.post("/api/access-requests/activate", tags=["Access Requests"])
+def activate_account(payload: AccountActivationRequest, db: Session = Depends(get_db)):
+    """
+    Set password and activate account for approved requester.
+    """
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match.")
+    if len(payload.password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters long.")
+
+    req = db.query(AccessRequest).filter(
+        AccessRequest.activation_token == payload.token,
+        AccessRequest.status == "APPROVED"
+    ).first()
+    if not req:
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
+    if is_token_expired(req.token_expires_at):
+        raise HTTPException(status_code=400, detail="Activation token has expired.")
+
+    # Create active user account
+    user_id = f"USR-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}-{secrets.token_hex(2)}"
+    hashed_pw = hash_password(payload.password)
+
+    user = User(
+        user_id=user_id,
+        email=req.email.lower(),
+        name=req.name,
+        organization=req.organization,
+        role=req.role or "Catalog Specialist",
+        hashed_password=hashed_pw,
+        is_active=1,
+        is_admin=0,
+        created_at=datetime.utcnow().isoformat(),
+    )
+    db.add(user)
+
+    # Invalidate activation token
+    req.activation_token = None
+    db.commit()
+
+    return {
+        "success": True,
+        "message": "Account activated successfully. You can now sign in.",
+        "email": req.email,
+    }
+
+
+@app.get("/api/access-requests", response_model=List[AccessRequestResponse], tags=["Access Requests"])
+def list_access_requests(db: Session = Depends(get_db)):
+    """List all access requests (admin view)."""
+    return db.query(AccessRequest).order_by(desc(AccessRequest.created_at)).all()
+
+
+@app.post("/api/admin/test-email", tags=["Administration"])
+def test_email_delivery(payload: Optional[TestEmailRequest] = None):
+    """
+    Safe administrative delivery test endpoint.
+    Dispatches a live test email to the designated recipient and returns explicit SMTP diagnostic status.
+    """
+    recipient = (payload.recipient if payload and payload.recipient else "dishasengar1june@gmail.com").strip()
+    now_formatted = datetime.utcnow().strftime("%d %b %Y, %H:%M:%S UTC")
+    html_body, text_body = build_test_email(recipient, now_formatted)
+    
+    result = send_email(
+        to=recipient,
+        subject="CatalogIQ — Email Delivery Test",
+        html=html_body,
+        text=text_body,
+    )
+    return result
+
+
+def _render_action_page(
+    title: str,
+    status_badge: str,
+    badge_color: str,
+    heading: str,
+    message: str,
+    action_btn_text: Optional[str] = None,
+    action_btn_url: Optional[str] = None,
+) -> str:
+    """Helper to render branded standalone HTML confirmation cards for email action redirects."""
+    btn_html = ""
+    if action_btn_text and action_btn_url:
+        btn_html = f"""
+          <div style="margin-top: 28px;">
+            <a href="{action_btn_url}" style="display:inline-block; background-color:#101827; color:#FFFFFF; text-decoration:none; font-weight:600; font-size:14px; padding:12px 28px; border-radius:10px;">
+              {action_btn_text} →
+            </a>
+          </div>
+        """
+
+    return f"""<!DOCTYPE html>
+<html lang="en" style="height:100%; background:#FBF7F3;">
+<head>
+  <meta charset="utf-8">
+  <title>{title} — CatalogIQ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {{ margin:0; padding:20px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display:flex; align-items:center; justify-content:center; min-height:100vh; box-sizing:border-box; background:#FBF7F3; }}
+    .card {{ max-width:540px; width:100%; background:#FFFFFF; border-radius:18px; border:1px solid #E5E0DA; padding:36px; box-shadow:0 8px 24px rgba(16,24,39,0.06); text-align:center; }}
+    .brand {{ display:inline-flex; align-items:center; gap:10px; margin-bottom:24px; }}
+    .logo-badge {{ width:32px; height:32px; line-height:32px; background:#E83E4F; color:#FFFFFF; font-weight:bold; font-size:16px; border-radius:8px; }}
+    .brand-name {{ font-size:18px; font-weight:bold; color:#101827; }}
+    .badge {{ display:inline-block; padding:4px 12px; border-radius:6px; font-size:11px; font-family:monospace; font-weight:bold; letter-spacing:0.05em; color:#FFFFFF; background:{badge_color}; margin-bottom:16px; }}
+    h1 {{ font-size:22px; color:#101827; margin:0 0 12px 0; }}
+    p {{ font-size:14px; color:#4B5563; line-height:1.6; margin:0; }}
+    .footer {{ margin-top:32px; padding-top:20px; border-top:1px solid #EFECE6; font-size:11px; font-family:monospace; color:#9CA3AF; }}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <div class="logo-badge">Q</div>
+      <span class="brand-name">CatalogIQ</span>
+    </div>
+    <div>
+      <span class="badge">{status_badge}</span>
+      <h1>{heading}</h1>
+      <p>{message}</p>
+      {btn_html}
+    </div>
+    <div class="footer">
+      CatalogIQ Enterprise Intelligence Platform · v1.0
+    </div>
+  </div>
+</body>
+</html>"""
+
 

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FBF7F3]">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Activate Your Account — CatalogIQ</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            display: ['Space Grotesk', 'sans-serif'],
+          },
+          colors: {
+            base: '#FBF7F3',
+            surface: '#FFFFFF',
+            structure: '#101827',
+            fashion: '#E83E4F',
+            'fashion-warm': '#F97316',
+          }
+        }
+      }
+    }
+  </script>
+  <script src="api.js"></script>
+</head>
+<body class="h-full bg-[#FBF7F3] text-slate-900 antialiased flex flex-col justify-center items-center p-4 selection:bg-[#FDE7E7] selection:text-[#E83E4F]">
+
+  <!-- Main Card Container -->
+  <div class="w-full max-w-md space-y-6">
+    
+    <!-- Brand Header -->
+    <div class="text-center space-y-2">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-[#101827] text-white shadow-md mb-2 border border-slate-800">
+        <span class="font-display font-bold text-2xl text-[#E83E4F]">Q</span>
+      </div>
+      <h1 class="text-2xl sm:text-3xl font-bold font-display text-slate-900 tracking-tight">Activate Your Account</h1>
+      <p class="text-xs sm:text-sm text-slate-600 font-sans">Set your password to complete enterprise onboarding</p>
+    </div>
+
+    <!-- Activation Card -->
+    <div class="bg-white rounded-2xl p-7 sm:p-8 border border-stone-200/90 shadow-sm space-y-5">
+      
+      <!-- Loading State -->
+      <div id="loading-state" class="py-8 text-center space-y-3 font-mono text-xs text-slate-400">
+        <div class="w-6 h-6 border-2 border-[#E83E4F] border-t-transparent rounded-full animate-spin mx-auto"></div>
+        <p>Verifying secure activation link...</p>
+      </div>
+
+      <!-- Error State -->
+      <div id="error-state" class="hidden py-6 text-center space-y-4">
+        <div class="w-12 h-12 rounded-full bg-rose-100 text-[#E83E4F] flex items-center justify-center mx-auto">
+          <span class="material-symbols-outlined text-2xl">link_off</span>
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-display font-bold text-base text-slate-900">Activation Link Invalid or Expired</h3>
+          <p id="error-desc" class="text-xs text-slate-600 font-sans">
+            This single-use activation link has already been used or has expired.
+          </p>
+        </div>
+        <div class="pt-2">
+          <a href="login.html" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#101827] hover:bg-slate-800 text-white text-xs font-semibold transition-all">
+            <span>Go to Login</span>
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- Active Form State -->
+      <div id="form-state" class="hidden space-y-5">
+        
+        <!-- Requester Info Summary -->
+        <div class="bg-stone-50 rounded-xl p-3.5 border border-stone-200/80 font-mono text-xs space-y-1.5">
+          <div class="flex justify-between">
+            <span class="text-slate-500 font-sans">Name:</span>
+            <span id="req-name" class="font-bold text-slate-900 font-sans"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500 font-sans">Work Email:</span>
+            <span id="req-email" class="font-bold text-slate-900"></span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500 font-sans">Organization:</span>
+            <span id="req-org" class="font-medium text-slate-800 font-sans"></span>
+          </div>
+        </div>
+
+        <!-- Inline Error Container -->
+        <div id="form-error" class="hidden p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800 font-medium flex items-center gap-2">
+          <span class="material-symbols-outlined text-[18px] text-rose-600">error</span>
+          <span id="form-error-text"></span>
+        </div>
+
+        <!-- Password Setup Form -->
+        <form id="activate-form" class="space-y-4" onsubmit="handleActivationSubmit(event)">
+          
+          <div class="space-y-1.5">
+            <label for="password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider font-mono">
+              Set Password
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3.5 top-2.5 text-[18px] text-slate-400">lock</span>
+              <input type="password" 
+                     id="password" 
+                     name="password" 
+                     required 
+                     minlength="6"
+                     placeholder="Minimum 6 characters" 
+                     class="w-full pl-10 pr-4 py-2.5 text-sm bg-stone-50 border border-stone-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#E83E4F] focus:bg-white focus:ring-1 focus:ring-[#E83E4F]/20 transition-all font-sans"/>
+            </div>
+          </div>
+
+          <div class="space-y-1.5">
+            <label for="confirm-password" class="block text-xs font-semibold text-slate-700 uppercase tracking-wider font-mono">
+              Confirm Password
+            </label>
+            <div class="relative">
+              <span class="material-symbols-outlined absolute left-3.5 top-2.5 text-[18px] text-slate-400">lock_reset</span>
+              <input type="password" 
+                     id="confirm-password" 
+                     name="confirm-password" 
+                     required 
+                     minlength="6"
+                     placeholder="Re-enter your password" 
+                     class="w-full pl-10 pr-4 py-2.5 text-sm bg-stone-50 border border-stone-300 rounded-xl text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-[#E83E4F] focus:bg-white focus:ring-1 focus:ring-[#E83E4F]/20 transition-all font-sans"/>
+            </div>
+          </div>
+
+          <button type="submit" 
+                  id="btn-activate"
+                  class="w-full py-2.5 px-4 rounded-xl bg-[#E83E4F] hover:bg-[#D42B3C] text-white font-semibold text-sm transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer mt-3">
+            <span>Activate Account</span>
+            <span class="material-symbols-outlined text-[18px]">verified_user</span>
+          </button>
+        </form>
+
+      </div>
+
+      <!-- Success State -->
+      <div id="success-state" class="hidden py-6 text-center space-y-4">
+        <div class="w-12 h-12 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center mx-auto">
+          <span class="material-symbols-outlined text-2xl">check_circle</span>
+        </div>
+        <div class="space-y-1">
+          <h3 class="font-display font-bold text-base text-slate-900">Account Activated Successfully</h3>
+          <p class="text-xs text-slate-600 font-sans">
+            Your credentials are confirmed. You can now sign in to CatalogIQ.
+          </p>
+        </div>
+        <div class="pt-2">
+          <a href="login.html" class="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-[#101827] hover:bg-slate-800 text-white text-xs font-semibold transition-all">
+            <span>Go to Login</span>
+            <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Footer Note -->
+    <div class="text-center">
+      <p class="text-[11px] font-mono text-slate-500">CatalogIQ Enterprise Intelligence Platform · v1.0</p>
+    </div>
+  </div>
+
+  <script>
+    let activationToken = '';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      activationToken = urlParams.get('token');
+
+      if (!activationToken) {
+        showError('No activation token provided in the link.');
+        return;
+      }
+
+      try {
+        const res = await fetch(`http://localhost:8000/api/access-requests/validate-activation?token=${encodeURIComponent(activationToken)}`);
+        if (!res.ok) {
+          const errData = await res.json();
+          showError(errData.detail || 'Activation link is invalid or has expired.');
+          return;
+        }
+
+        const data = await res.json();
+        document.getElementById('loading-state').classList.add('hidden');
+        document.getElementById('req-name').textContent = data.name;
+        document.getElementById('req-email').textContent = data.email;
+        document.getElementById('req-org').textContent = data.organization;
+        document.getElementById('form-state').classList.remove('hidden');
+
+      } catch (err) {
+        showError('Unable to connect to CatalogIQ API server.');
+      }
+    });
+
+    function showError(msg) {
+      document.getElementById('loading-state').classList.add('hidden');
+      document.getElementById('form-state').classList.add('hidden');
+      document.getElementById('error-desc').textContent = msg;
+      document.getElementById('error-state').classList.remove('hidden');
+    }
+
+    async function handleActivationSubmit(e) {
+      e.preventDefault();
+      const pw = document.getElementById('password').value;
+      const cpw = document.getElementById('confirm-password').value;
+      const formErr = document.getElementById('form-error');
+      const formErrText = document.getElementById('form-error-text');
+      const btn = document.getElementById('btn-activate');
+
+      if (pw !== cpw) {
+        formErrText.textContent = 'Passwords do not match.';
+        formErr.classList.remove('hidden');
+        return;
+      }
+
+      if (pw.length < 6) {
+        formErrText.textContent = 'Password must be at least 6 characters.';
+        formErr.classList.remove('hidden');
+        return;
+      }
+
+      formErr.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = `<span>Activating...</span>`;
+
+      try {
+        const res = await fetch('http://localhost:8000/api/access-requests/activate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            token: activationToken,
+            password: pw,
+            confirm_password: cpw
+          })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          formErrText.textContent = errData.detail || 'Activation failed.';
+          formErr.classList.remove('hidden');
+          btn.disabled = false;
+          btn.innerHTML = `<span>Activate Account</span>`;
+          return;
+        }
+
+        document.getElementById('form-state').classList.add('hidden');
+        document.getElementById('success-state').classList.remove('hidden');
+
+      } catch (err) {
+        formErrText.textContent = 'Failed to connect to authentication server.';
+        formErr.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = `<span>Activate Account</span>`;
+      }
+    }
+  </script>
+</body>
+</html>

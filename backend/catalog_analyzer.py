@@ -19,44 +19,47 @@ VOCABULARY_GENDERS = {
 }
 
 VOCABULARY_CATEGORIES = {
-    "kurta": "Kurtas",
-    "kurtas": "Kurtas",
-    "kurti": "Kurtas",
-    "anarkali": "Kurtas",
-    "shirt": "Shirts",
-    "shirts": "Shirts",
+    "kurta": "Kurta",
+    "kurtas": "Kurta",
+    "kurti": "Kurta",
+    "anarkali": "Kurta",
+    "ethnic kurta": "Kurta",
+    "shirt": "Shirt",
+    "shirts": "Shirt",
     "jeans": "Jeans",
     "jean": "Jeans",
-    "dress": "Dresses",
-    "dresses": "Dresses",
-    "gown": "Dresses",
-    "maxi": "Dresses",
+    "dress": "Dress",
+    "dresses": "Dress",
+    "gown": "Dress",
+    "maxi": "Dress",
     "sneaker": "Sneakers",
     "sneakers": "Sneakers",
     "running shoes": "Running Shoes",
     "running shoe": "Running Shoes",
     "sports shoes": "Running Shoes",
-    "jacket": "Jackets",
-    "jackets": "Jackets",
-    "blazer": "Jackets",
-    "bomber": "Jackets",
-    "t-shirt": "T-shirts",
-    "tshirt": "T-shirts",
-    "t-shirts": "T-shirts",
-    "tshirts": "T-shirts",
-    "tee": "T-shirts",
-    "tees": "T-shirts",
+    "jacket": "Jacket",
+    "jackets": "Jacket",
+    "blazer": "Jacket",
+    "bomber": "Jacket",
+    "t-shirt": "T-Shirt",
+    "tshirt": "T-Shirt",
+    "t-shirts": "T-Shirt",
+    "tshirts": "T-Shirt",
+    "t shirt": "T-Shirt",
+    "t shirts": "T-Shirt",
+    "tee": "T-Shirt",
+    "tees": "T-Shirt",
     "trouser": "Trousers",
     "trousers": "Trousers",
     "pants": "Trousers",
-    "cargo": "Trousers",
-    "cargos": "Trousers",
-    "cargo pants": "Trousers",
-    "handbag": "Handbags",
-    "handbags": "Handbags",
-    "bag": "Handbags",
-    "bags": "Handbags",
-    "tote": "Handbags",
+    "cargo": "Cargo Pants",
+    "cargos": "Cargo Pants",
+    "cargo pants": "Cargo Pants",
+    "handbag": "Handbag",
+    "handbags": "Handbag",
+    "bag": "Handbag",
+    "bags": "Handbag",
+    "tote": "Handbag",
 }
 
 VOCABULARY_COLORS = {
@@ -65,19 +68,19 @@ VOCABULARY_COLORS = {
 }
 
 VOCABULARY_FITS = {
-    "oversized", "slim", "regular", "relaxed", "skinny", "wide leg", "loose", "straight"
+    "oversized", "slim", "regular", "relaxed", "skinny", "wide leg", "wide-leg", "wide", "loose", "straight", "tapered"
 }
 
 VOCABULARY_MATERIALS = {
-    "cotton", "linen", "denim", "leather", "silk", "polyester", "viscose", "wool", "waterproof"
+    "cotton", "linen", "denim", "leather", "silk", "polyester", "viscose", "wool", "waterproof", "mesh"
 }
 
 VOCABULARY_PATTERNS = {
-    "solid", "printed", "striped", "floral", "checked", "embroidered"
+    "solid", "printed", "striped", "floral", "checked", "embroidered", "colour-block", "graphic", "textured"
 }
 
 VOCABULARY_SLEEVES = {
-    "full sleeve", "half sleeve", "sleeveless", "long sleeve", "short sleeve"
+    "full sleeve", "half sleeve", "sleeveless", "long sleeve", "short sleeve", "three-quarter", "full", "half"
 }
 
 
@@ -88,7 +91,7 @@ def extract_query_intent(query_str: str) -> Dict[str, Any]:
     Example:
     'black oversized kurta men' -> {
         'gender': 'Men',
-        'category': 'Kurtas',
+        'category': 'Kurta',
         'color': 'black',
         'fit': 'oversized',
         'material': None,
@@ -113,21 +116,23 @@ def extract_query_intent(query_str: str) -> Dict[str, Any]:
     }
     
     # 1. Multi-word phrases first
-    # Sleeves (e.g. 'full sleeve', 'half sleeve')
-    for sleeve_kw in VOCABULARY_SLEEVES:
+    # Sleeves (e.g. 'full sleeve', 'half sleeve', 'three-quarter')
+    for sleeve_kw in ["full sleeve", "half sleeve", "three-quarter", "long sleeve", "short sleeve"]:
         if sleeve_kw in normalized:
-            intent["sleeve"] = sleeve_kw
+            intent["sleeve"] = sleeve_kw.replace(" sleeve", "")
             normalized = normalized.replace(sleeve_kw, " ")
             
-    # Fits (e.g. 'wide leg')
-    if "wide leg" in normalized:
-        intent["fit"] = "wide leg"
-        normalized = normalized.replace("wide leg", " ")
+    # Fits (e.g. 'wide leg', 'wide-leg', 'slim fit', 'regular fit')
+    for fit_kw in ["wide leg", "wide-leg", "slim fit", "regular fit", "relaxed fit", "skinny fit", "tapered fit"]:
+        if fit_kw in normalized:
+            clean_fit = fit_kw.replace(" fit", "").replace("-leg", "").replace(" leg", "")
+            intent["fit"] = "wide" if "wide" in clean_fit else clean_fit
+            normalized = normalized.replace(fit_kw, " ")
         
-    # Categories (e.g. 'running shoes', 'cargo pants')
-    for multi_cat in ["running shoes", "running shoe", "sports shoes", "cargo pants"]:
+    # Categories (e.g. 'running shoes', 'cargo pants', 't shirt', 't-shirt')
+    for multi_cat in ["running shoes", "running shoe", "sports shoes", "cargo pants", "t-shirt", "t shirt", "t shirts"]:
         if multi_cat in normalized:
-            intent["category"] = VOCABULARY_CATEGORIES[multi_cat]
+            intent["category"] = VOCABULARY_CATEGORIES.get(multi_cat, "Running Shoes" if "shoe" in multi_cat else "T-Shirt")
             normalized = normalized.replace(multi_cat, " ")
             break
 
@@ -142,13 +147,43 @@ def extract_query_intent(query_str: str) -> Dict[str, Any]:
         elif token in VOCABULARY_COLORS and not intent["color"]:
             intent["color"] = token
         elif token in VOCABULARY_FITS and not intent["fit"]:
-            intent["fit"] = token
+            intent["fit"] = "wide" if "wide" in token else token
         elif token in VOCABULARY_MATERIALS and not intent["material"]:
             intent["material"] = token
         elif token in VOCABULARY_PATTERNS and not intent["pattern"]:
             intent["pattern"] = token
+        elif token in VOCABULARY_SLEEVES and not intent["sleeve"]:
+            intent["sleeve"] = token
 
     return intent
+
+
+def _normalize_category(cat: Optional[str]) -> str:
+    """Normalize category strings to handle singular/plural and synonyms."""
+    c = str(cat or "").strip().lower()
+    if c in ["kurtas", "kurti", "anarkali", "ethnic kurta"]:
+        return "kurta"
+    if c in ["shirts"]:
+        return "shirt"
+    if c in ["dresses", "gown", "maxi"]:
+        return "dress"
+    if c in ["jackets", "blazer", "bomber"]:
+        return "jacket"
+    if c in ["t-shirts", "tshirts", "t shirt", "t-shirt", "tshirt", "tee", "tees"]:
+        return "t-shirt"
+    if c in ["handbags", "bags", "bag", "tote"]:
+        return "handbag"
+    if c in ["cargos", "cargo", "cargo pants"]:
+        return "cargo pants"
+    if c in ["sneaker", "sneakers"]:
+        return "sneakers"
+    if c in ["running shoe", "running shoes", "sports shoes"]:
+        return "running shoes"
+    if c in ["trouser", "trousers", "pants"]:
+        return "trousers"
+    if c in ["jean", "jeans"]:
+        return "jeans"
+    return c
 
 
 def evaluate_product_match(
@@ -178,12 +213,13 @@ def evaluate_product_match(
     # 1. Category Matching
     target_cat = intent.get("category")
     if target_cat:
-        if prod_cat.lower() == target_cat.lower():
+        norm_prod_cat = _normalize_category(prod_cat)
+        norm_target_cat = _normalize_category(target_cat)
+        if norm_prod_cat == norm_target_cat:
             details["category_match"] = True
-        elif target_cat == "Trousers" and str(product_dict.get("subcategory", "")).lower() in ["cargos", "cargo"]:
+        elif norm_target_cat == "trousers" and norm_prod_cat == "cargo pants":
             details["category_match"] = True
     else:
-        # If no explicit category in query, match all
         details["category_match"] = True
 
     # 2. Gender Matching
@@ -206,7 +242,7 @@ def evaluate_product_match(
     target_color = intent.get("color")
     if target_color:
         prod_color = str(product_dict.get("color", "") or "").lower().strip()
-        if prod_color == target_color or target_color in prod_title:
+        if (prod_color and (target_color == prod_color or target_color in prod_color or prod_color in target_color)) or target_color in prod_title:
             details["modifier_matches"]["color"] = "matched"
         else:
             details["modifier_matches"]["color"] = "missing_or_mismatch"
@@ -217,7 +253,7 @@ def evaluate_product_match(
     target_fit = intent.get("fit")
     if target_fit:
         prod_fit = str(product_dict.get("fit", "") or "").lower().strip()
-        if prod_fit == target_fit or target_fit in prod_title:
+        if (prod_fit and (target_fit == prod_fit or target_fit in prod_fit or prod_fit in target_fit)) or target_fit in prod_title:
             details["modifier_matches"]["fit"] = "matched"
         else:
             details["modifier_matches"]["fit"] = "missing_or_mismatch"
@@ -228,7 +264,7 @@ def evaluate_product_match(
     target_material = intent.get("material")
     if target_material:
         prod_material = str(product_dict.get("material", "") or "").lower().strip()
-        if prod_material == target_material or target_material in prod_title or target_material in prod_desc:
+        if (prod_material and (target_material == prod_material or target_material in prod_material or prod_material in target_material)) or target_material in prod_title or target_material in prod_desc:
             details["modifier_matches"]["material"] = "matched"
         else:
             details["modifier_matches"]["material"] = "missing_or_mismatch"
@@ -239,7 +275,7 @@ def evaluate_product_match(
     target_pattern = intent.get("pattern")
     if target_pattern:
         prod_pattern = str(product_dict.get("pattern", "") or "").lower().strip()
-        if prod_pattern == target_pattern or target_pattern in prod_title:
+        if (prod_pattern and (target_pattern == prod_pattern or target_pattern in prod_pattern or prod_pattern in target_pattern)) or target_pattern in prod_title:
             details["modifier_matches"]["pattern"] = "matched"
         else:
             details["modifier_matches"]["pattern"] = "missing_or_mismatch"
@@ -250,7 +286,7 @@ def evaluate_product_match(
     target_sleeve = intent.get("sleeve")
     if target_sleeve:
         prod_sleeve = str(product_dict.get("sleeve", "") or "").lower().strip()
-        if prod_sleeve == target_sleeve or target_sleeve in prod_title:
+        if (prod_sleeve and (target_sleeve == prod_sleeve or target_sleeve in prod_sleeve or prod_sleeve in target_sleeve)) or target_sleeve in prod_title:
             details["modifier_matches"]["sleeve"] = "matched"
         else:
             details["modifier_matches"]["sleeve"] = "missing_or_mismatch"

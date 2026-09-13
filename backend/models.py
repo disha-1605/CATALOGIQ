@@ -21,6 +21,8 @@ class Product(Base):
     sleeve = Column(String(50), nullable=True)
     pattern = Column(String(50), nullable=True)
     price = Column(Float, nullable=False)
+    image_url = Column(String(255), nullable=True)
+    injected_defect = Column(String(100), nullable=True)
 
     # Computed Health Score Metrics
     health_score = Column(Float, nullable=False, default=0.0)
@@ -61,3 +63,37 @@ class SearchQuery(Base):
     gap_score = Column(Float, nullable=False, default=0.0)
     fixability_score = Column(Float, nullable=False, default=0.0)
     recommended_action = Column(Text, nullable=False, default="")
+
+
+class User(Base):
+    """User account model for CatalogIQ."""
+    __tablename__ = "users"
+
+    user_id = Column(String(50), primary_key=True, index=True)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    name = Column(String(100), nullable=False)
+    organization = Column(String(150), nullable=False)
+    role = Column(String(100), nullable=False, default="Catalog Specialist")
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Integer, nullable=False, default=1)  # 1=active, 0=inactive
+    is_admin = Column(Integer, nullable=False, default=0)   # 1=admin, 0=standard
+    created_at = Column(String(50), nullable=False)
+
+
+class AccessRequest(Base):
+    """Access request model for enterprise onboarding and admin approval."""
+    __tablename__ = "access_requests"
+
+    request_id = Column(String(50), primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    email = Column(String(255), index=True, nullable=False)
+    organization = Column(String(150), nullable=False)
+    role = Column(String(100), nullable=True, default="Catalog Operations")
+    status = Column(String(30), nullable=False, default="PENDING")  # PENDING, APPROVED, REJECTED
+    approval_token = Column(String(100), unique=True, index=True, nullable=True)
+    activation_token = Column(String(100), unique=True, index=True, nullable=True)
+    token_expires_at = Column(String(50), nullable=True)
+    created_at = Column(String(50), nullable=False)
+    approved_at = Column(String(50), nullable=True)
+    approved_by = Column(String(100), nullable=True)
+

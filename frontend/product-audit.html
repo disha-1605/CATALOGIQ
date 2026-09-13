@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-[#FBF7F3]">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CatalogIQ — Product Catalog Audit</title>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400;1,6..72,500&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet"/>
+  
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            display: ['Space Grotesk', 'sans-serif'],
+            serif: ['Newsreader', 'Georgia', 'serif'],
+          },
+          colors: {
+            base: '#FBF7F3',
+            surface: '#FFFFFF',
+            structure: '#101827',
+            fashion: '#E83E4F',
+            'fashion-warm': '#F97316',
+            'coral-soft': '#FDE7E7',
+            'peach-soft': '#FFF0E8',
+            'lavender-soft': '#F0EAFB',
+            slate: {
+              850: '#172033',
+              900: '#111827',
+              950: '#0B0F19'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .font-mono-num { font-feature-settings: 'tnum' on, 'lnum' on; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .fashion-gradient {
+      background: linear-gradient(135deg, #FFF0E8 0%, #FDE7E7 50%, #F5ECFD 100%);
+    }
+  </style>
+  <script src="api.js"></script>
+  <script>
+    CatalogIQ_Auth.requireAuth();
+  </script>
+</head>
+<body class="h-full bg-[#FBF7F3] text-slate-900 antialiased flex flex-col lg:flex-row selection:bg-[#FDE7E7] selection:text-[#E83E4F]">
+
+  <!-- ========================================================================= -->
+  <!-- 1. DESKTOP SIDEBAR NAVIGATION (>= 1024px) -->
+  <!-- ========================================================================= -->
+  <aside class="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 bg-[#101827] text-slate-300 z-50 border-r border-slate-800/80 justify-between">
+    <div>
+      <!-- Brand / Header -->
+      <div class="p-5 border-b border-slate-800/80 flex items-center gap-3">
+        <div class="w-8 h-8 rounded-lg bg-[#E83E4F] flex items-center justify-center text-white font-display font-bold text-base shadow-sm shrink-0">
+          Q
+        </div>
+        <div>
+          <span class="font-display font-bold text-base text-white tracking-tight">CatalogIQ</span>
+          <span class="block text-[9px] font-mono uppercase tracking-wider text-slate-400">Search to Catalog Intelligence</span>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="px-3.5 py-5 space-y-1.5">
+        <a href="dashboard.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium text-xs tracking-tight transition-all">
+          <span class="material-symbols-outlined text-[18px]">dashboard</span>
+          <span>Overview</span>
+        </a>
+
+        <a href="search-intelligence.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 font-medium text-xs tracking-tight transition-all">
+          <span class="material-symbols-outlined text-[18px]">radar</span>
+          <span>Search Intelligence</span>
+        </a>
+
+        <a href="product-audit.html" class="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-[#2D1A24] text-white border border-[#E83E4F]/30 font-medium text-xs tracking-tight transition-all shadow-xs">
+          <span class="material-symbols-outlined text-[18px] text-[#E83E4F]">fact_check</span>
+          <span>Product Audit</span>
+        </a>
+
+        <!-- Insights Focus Section -->
+        <div class="pt-6 px-3 pb-2 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-400">Category Filter</div>
+        
+        <button onclick="filterCategory('Kurtas')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors text-left">
+          <span>Kurtas</span>
+          <span class="font-mono text-[11px] text-slate-500">20 SKUs</span>
+        </button>
+
+        <button onclick="filterCategory('Shirts')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors text-left">
+          <span>Shirts</span>
+          <span class="font-mono text-[11px] text-slate-500">20 SKUs</span>
+        </button>
+
+        <button onclick="filterCategory('Jeans')" class="w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs text-slate-400 hover:text-white hover:bg-slate-800/40 transition-colors text-left">
+          <span>Jeans</span>
+          <span class="font-mono text-[11px] text-slate-500">20 SKUs</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- Sidebar Bottom -->
+    <div class="p-4 border-t border-slate-800/80 bg-slate-950/60 text-xs">
+      <div class="flex items-center justify-between mb-1.5">
+        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800/60 font-mono text-[10px]">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          Live DB
+        </span>
+      </div>
+      <p class="text-[10px] text-slate-400 font-mono">200 fashion SKUs</p>
+    </div>
+  </aside>
+
+  <!-- ========================================================================= -->
+  <!-- 2. TOP BAR & MAIN WORKSPACE -->
+  <!-- ========================================================================= -->
+  <div class="flex-1 lg:ml-60 flex flex-col min-h-screen">
+    
+    <!-- Top Bar -->
+    <header class="sticky top-0 z-40 bg-[#FBF7F3]/90 backdrop-blur-md border-b border-stone-200/80 px-4 sm:px-8 py-3 flex items-center justify-between">
+      <div class="lg:hidden flex items-center gap-2.5">
+        <div class="w-7 h-7 rounded-lg bg-[#E83E4F] flex items-center justify-center text-white font-display font-bold text-sm">Q</div>
+        <span class="font-display font-bold text-base text-slate-900 tracking-tight">CatalogIQ</span>
+      </div>
+
+      <div class="flex items-center gap-3 w-full max-w-xl">
+        <div class="relative w-full">
+          <span class="material-symbols-outlined text-slate-400 absolute left-3 top-2 text-[18px]">search</span>
+          <input type="text" 
+                 id="product-search-input" 
+                 placeholder="Search by product name, SKU, or brand..." 
+                 class="w-full pl-9 pr-8 py-1.5 text-xs bg-white border border-stone-300/80 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#E83E4F] shadow-2xs font-sans"/>
+          <button id="clear-search-btn" class="absolute right-2.5 top-2 text-slate-400 hover:text-slate-700">
+            <span class="material-symbols-outlined text-[14px]">close</span>
+          </button>
+        </div>
+
+        <!-- Live Dropdown -->
+        <div id="search-results-dropdown" class="hidden absolute left-4 sm:left-auto top-12 z-50 bg-white border border-stone-200 rounded-xl shadow-xl max-h-72 overflow-y-auto w-80">
+          <div id="search-results-list" class="p-2 space-y-1 text-xs"></div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3 shrink-0">
+        <a href="dashboard.html" class="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-[#E83E4F] transition-colors font-mono">
+          <span class="material-symbols-outlined text-[16px]">arrow_back</span>
+          <span class="hidden sm:inline">Overview</span>
+        </a>
+        <div id="user-account-badge"></div>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 w-full max-w-[1440px] px-4 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-8 mx-auto space-y-6 pb-24 lg:pb-12">
+      
+      <!-- Page Title -->
+      <div class="space-y-1">
+        <span class="text-[10px] font-mono font-bold uppercase tracking-wider text-[#E83E4F]">
+          PRODUCT HEALTH AUDIT
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 font-display">
+          SKU Inspection & Quality Audit
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-600 max-w-3xl">
+          SKU-level attribute completeness, classification integrity, and content health.
+        </p>
+      </div>
+
+      <!-- Product Audit Workspace Container (Loaded dynamically) -->
+      <div id="product-detail-container" class="space-y-6">
+        <div class="p-12 text-center text-xs font-mono text-slate-400 bg-white border border-stone-200 rounded-2xl animate-pulse">
+          Loading product audit workbench...
+        </div>
+      </div>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation -->
+    <nav class="lg:hidden fixed bottom-0 inset-x-0 z-50 bg-[#101827] border-t border-slate-800 px-6 py-2.5 flex justify-around items-center text-xs shadow-lg">
+      <a href="dashboard.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+        <span class="material-symbols-outlined text-[20px]">dashboard</span>
+        <span class="font-mono text-[9px]">Overview</span>
+      </a>
+      <a href="search-intelligence.html" class="flex flex-col items-center gap-1 text-slate-400 hover:text-white">
+        <span class="material-symbols-outlined text-[20px]">radar</span>
+        <span class="font-mono text-[9px]">Search</span>
+      </a>
+      <a href="product-audit.html" class="flex flex-col items-center gap-1 text-[#E83E4F] font-bold">
+        <span class="material-symbols-outlined text-[20px]">fact_check</span>
+        <span class="font-mono text-[9px]">Audit</span>
+      </a>
+    </nav>
+  </div>
+
+  <!-- JavaScript Controller -->
+  <script>
+    let currentProduct = null;
+    let searchDebounceTimeout = null;
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Render user account area
+      CatalogIQ_Auth.renderUserBadge('user-account-badge');
+
+      const searchInput = document.getElementById('product-search-input');
+      const clearBtn = document.getElementById('clear-search-btn');
+      const dropdown = document.getElementById('search-results-dropdown');
+      const urlParams = new URLSearchParams(window.location.search);
+      const productIdFromUrl = urlParams.get('product_id');
+      const queryParam = urlParams.get('q');
+
+      if (clearBtn && searchInput) {
+        clearBtn.addEventListener('click', () => {
+          searchInput.value = '';
+          dropdown.classList.add('hidden');
+          searchInput.focus();
+        });
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const query = e.target.value.trim();
+          clearTimeout(searchDebounceTimeout);
+          if (!query) {
+            dropdown.classList.add('hidden');
+            return;
+          }
+          searchDebounceTimeout = setTimeout(() => performProductSearch(query), 200);
+        });
+
+        document.addEventListener('click', (e) => {
+          if (!searchInput.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.add('hidden');
+          }
+        });
+      }
+
+      try {
+        let initialId = productIdFromUrl;
+        if (!initialId && queryParam) {
+          const searchData = await window.CatalogIQ_API.getProducts({ q: queryParam, page_size: 1 });
+          if (searchData.items && searchData.items.length > 0) {
+            initialId = searchData.items[0].product_id;
+          }
+        }
+        if (!initialId) {
+          const initialList = await window.CatalogIQ_API.getProducts({ page: 1, page_size: 10 });
+          if (initialList.items && initialList.items.length > 0) {
+            initialId = initialList.items[0].product_id;
+          }
+        }
+
+        if (initialId) {
+          await loadProductAudit(initialId);
+        }
+      } catch (err) {
+        console.error('Failed to init audit:', err);
+      }
+    });
+
+    async function filterCategory(catName) {
+      try {
+        const data = await window.CatalogIQ_API.getProducts({ category: catName, page_size: 1 });
+        if (data.items && data.items.length > 0) {
+          selectProduct(data.items[0].product_id);
+        }
+      } catch (e) {
+        console.error('Filter error:', e);
+      }
+    }
+
+    async function performProductSearch(query) {
+      const dropdown = document.getElementById('search-results-dropdown');
+      const resultsList = document.getElementById('search-results-list');
+      
+      try {
+        const data = await window.CatalogIQ_API.getProducts({ q: query, page_size: 6 });
+        const items = data.items || [];
+
+        if (items.length === 0) {
+          resultsList.innerHTML = `<div class="p-2 text-slate-400 text-center font-mono">No matching products found.</div>`;
+        } else {
+          resultsList.innerHTML = items.map(p => `
+            <div onclick="selectProduct('${escapeHtml(p.product_id)}')" 
+                 class="cursor-pointer p-2.5 rounded-lg hover:bg-stone-50 flex items-center justify-between transition-colors">
+              <div class="min-w-0 pr-2">
+                <p class="font-semibold text-slate-900 truncate">${escapeHtml(p.title)}</p>
+                <span class="font-mono text-[10px] text-slate-400">SKU: ${escapeHtml(p.product_id)} · ${escapeHtml(p.brand)}</span>
+              </div>
+              <span class="font-mono text-xs font-bold ${Math.round(p.health_score) < 70 ? 'text-[#E83E4F]' : 'text-emerald-700'}">
+                ${Math.round(p.health_score)}
+              </span>
+            </div>
+          `).join('');
+        }
+        dropdown.classList.remove('hidden');
+      } catch (err) {
+        console.error('Search error:', err);
+      }
+    }
+
+    function selectProduct(productId) {
+      document.getElementById('search-results-dropdown').classList.add('hidden');
+      const newUrl = `${window.location.pathname}?product_id=${encodeURIComponent(productId)}`;
+      window.history.pushState({ path: newUrl }, '', newUrl);
+      loadProductAudit(productId);
+    }
+
+    async function loadProductAudit(productId) {
+      const container = document.getElementById('product-detail-container');
+      container.innerHTML = `
+        <div class="p-12 text-center text-xs font-mono text-slate-400 bg-white border border-stone-200 rounded-2xl animate-pulse">
+          Loading audit for SKU ${escapeHtml(productId)}...
+        </div>
+      `;
+
+      try {
+        currentProduct = await window.CatalogIQ_API.getProduct(productId);
+        document.getElementById('product-search-input').value = currentProduct.title;
+        renderProductAudit(currentProduct);
+      } catch (err) {
+        console.error('Failed to load product:', err);
+      }
+    }
+
+    function renderProductAudit(p) {
+      const container = document.getElementById('product-detail-container');
+      const healthScore = Math.round(p.health_score);
+      const attrScore = Math.round(p.attribute_completeness_score);
+      const titleScore = Math.round(p.title_quality_score);
+      const descScore = Math.round(p.description_quality_score);
+      const catScore = Math.round(p.category_consistency_score);
+
+      // SVG Ring: Circumference = 2 * PI * 40 ≈ 251.3
+      const circumference = 251.3;
+      const offset = (circumference * (1 - healthScore / 100)).toFixed(1);
+
+      const classification = p.health_classification || 'Good';
+      const tierBadgeStyle = classification === 'Critical'
+        ? 'bg-rose-100 text-rose-900 border border-rose-300'
+        : (classification === 'Needs Attention' ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300');
+
+      let ringColorClass = 'text-emerald-500';
+      if (classification === 'Critical') ringColorClass = 'text-[#E83E4F]';
+      else if (classification === 'Needs Attention') ringColorClass = 'text-amber-500';
+      else if (classification === 'Good') ringColorClass = 'text-sky-500';
+
+      const missingList = p.missing_attributes || [];
+      const missingCount = missingList.length;
+      const missingBadgeText = missingCount === 0 ? 'All Complete' : `${missingCount} missing`;
+      const missingBadgeClass = missingCount === 0 ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-100 text-rose-800 border-rose-200 font-bold';
+
+      let missingItemsHtml = '';
+      if (missingCount === 0) {
+        missingItemsHtml = `
+          <div class="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs font-mono text-emerald-800 col-span-full flex items-center gap-2">
+            <span class="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+            <span>All expected attributes populated.</span>
+          </div>
+        `;
+      } else {
+        missingItemsHtml = missingList.map(attr => `
+          <div class="flex items-center justify-between p-2.5 rounded-lg bg-stone-50 border border-stone-200/80 text-xs font-mono">
+            <span class="text-slate-800 capitalize">• ${escapeHtml(attr)}</span>
+            <span class="text-[10px] font-semibold text-[#E83E4F] bg-rose-50 px-2 py-0.5 rounded border border-rose-200">Missing</span>
+          </div>
+        `).join('');
+      }
+
+      const issues = p.quality_issues || [];
+      let issuesHtml = '';
+      if (issues.length > 0) {
+        issuesHtml = `
+          <div class="bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs space-y-3">
+            <div class="flex items-center justify-between border-b border-stone-100 pb-2">
+              <h3 class="font-display text-xs font-bold text-slate-900 uppercase tracking-wider">Detected Quality Flags</h3>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-semibold">${issues.length} issues</span>
+            </div>
+            <div class="space-y-1.5 text-xs text-slate-700">
+              ${issues.map(iss => `
+                <div class="p-2.5 rounded-lg bg-amber-50/70 border border-amber-200/60 flex items-start gap-2">
+                  <span class="text-amber-600 text-xs">⚠️</span>
+                  <span>${escapeHtml(iss)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      // Render product's dynamic image_url directly from dataset
+      const productImg = p.image_url || '';
+
+      container.innerHTML = `
+        <!-- Filter chips bar -->
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-100 text-rose-900 font-mono text-xs font-semibold">
+            ${escapeHtml(p.category)} <span class="cursor-pointer text-xs">×</span>
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-rose-100 text-rose-900 font-mono text-xs font-semibold">
+            ${escapeHtml(p.gender)} <span class="cursor-pointer text-xs">×</span>
+          </span>
+        </div>
+
+        <!-- 2-COLUMN WORKSPACE -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- LEFT: Product Visual & Metadata Card (5 cols on lg) -->
+          <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-stone-200/90 shadow-2xs space-y-5">
+            <div class="relative w-full h-80 rounded-xl overflow-hidden bg-stone-100 border border-stone-200/70 flex items-center justify-center">
+              ${productImg ? `<img src="${productImg}" alt="${escapeHtml(p.title)}" class="w-full h-full object-cover object-center"/>` : `<div class="text-slate-400 font-mono text-xs">No image provided</div>`}
+            </div>
+
+            <div class="space-y-2">
+              <h2 class="text-xl font-bold font-display text-slate-900 tracking-tight leading-snug">
+                ${escapeHtml(p.title)}
+              </h2>
+              <p class="text-xs font-mono text-slate-500">
+                SKU: <strong class="text-slate-800">#${escapeHtml(p.product_id)}</strong> · Brand: <strong class="text-slate-800">${escapeHtml(p.brand)}</strong>
+              </p>
+              <div class="text-2xl font-bold font-display text-slate-900 pt-1 font-mono-num">
+                ₹${Number(p.price).toLocaleString('en-IN')}
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-stone-100 space-y-1">
+              <span class="text-[10px] font-mono uppercase tracking-wider text-slate-400 block">Description</span>
+              <p class="text-xs text-slate-700 leading-relaxed font-sans bg-stone-50 p-3 rounded-lg border border-stone-200/60">
+                "${escapeHtml(p.description)}"
+              </p>
+            </div>
+
+            <a href="#" onclick="alert('Viewing catalog item #${escapeHtml(p.product_id)} on fashion storefront'); return false;" 
+               class="inline-flex items-center justify-center gap-2 w-full py-2.5 rounded-xl bg-stone-900 hover:bg-black text-white text-xs font-semibold transition-all font-mono">
+              <span>View on Storefront</span>
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+            </a>
+          </div>
+
+          <!-- RIGHT: Health Score, Sub-Scores & Quality Flags (7 cols on lg) -->
+          <div class="lg:col-span-7 space-y-5">
+            
+            <!-- Health Score Card -->
+            <div class="bg-white rounded-2xl p-6 border border-stone-200/90 shadow-2xs space-y-5">
+              <div class="flex items-center justify-between border-b border-stone-100 pb-3">
+                <h3 class="font-display text-sm font-bold text-slate-900 uppercase tracking-wider">Catalog Health Score</h3>
+                <span class="text-xs font-mono font-semibold px-2.5 py-0.5 rounded-full ${tierBadgeStyle}">
+                  ${escapeHtml(classification)}
+                </span>
+              </div>
+
+              <!-- Central Circular Score Visual -->
+              <div class="flex items-center justify-center py-2">
+                <div class="relative w-28 h-28 flex items-center justify-center">
+                  <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                    <circle class="text-stone-100" cx="50" cy="50" fill="none" r="40" stroke="currentColor" stroke-width="8"></circle>
+                    <circle class="${ringColorClass} transition-all duration-700 ease-out" 
+                            cx="50" cy="50" fill="none" r="40" 
+                            stroke="currentColor" 
+                            stroke-dasharray="${circumference}" 
+                            stroke-dashoffset="${offset}" 
+                            stroke-linecap="round" 
+                            stroke-width="8"></circle>
+                  </svg>
+                  <div class="absolute inset-0 flex flex-col items-center justify-center">
+                    <span class="text-3xl font-bold font-display text-slate-900 font-mono-num">${healthScore}</span>
+                    <span class="text-[9px] font-mono text-slate-400 uppercase">/ 100</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Component Scores Bars -->
+              <div class="space-y-3 pt-2 border-t border-stone-100 text-xs font-mono">
+                <div class="space-y-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-600">Attribute Completeness</span>
+                    <span class="font-bold ${attrScore < 60 ? 'text-[#E83E4F]' : 'text-slate-900'}">${attrScore}%</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="${attrScore < 60 ? 'bg-[#E83E4F]' : 'bg-slate-800'} h-full rounded-full" style="width: ${attrScore}%;"></div>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-600">Title Specificity</span>
+                    <span class="font-bold text-slate-900">${titleScore}%</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="bg-slate-800 h-full rounded-full" style="width: ${titleScore}%;"></div>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-600">Description Richness</span>
+                    <span class="font-bold text-slate-900">${descScore}%</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="bg-amber-500 h-full rounded-full" style="width: ${descScore}%;"></div>
+                  </div>
+                </div>
+
+                <div class="space-y-1">
+                  <div class="flex justify-between">
+                    <span class="text-slate-600">Category Alignment</span>
+                    <span class="font-bold text-slate-900">${catScore}%</span>
+                  </div>
+                  <div class="w-full h-1.5 bg-stone-100 rounded-full overflow-hidden">
+                    <div class="bg-slate-800 h-full rounded-full" style="width: ${catScore}%;"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Missing Attributes Card -->
+            <div class="bg-white rounded-2xl p-5 border border-stone-200/90 shadow-2xs space-y-3">
+              <div class="flex items-center justify-between border-b border-stone-100 pb-2">
+                <h3 class="font-display text-xs font-bold text-slate-900 uppercase tracking-wider">Missing Attributes</h3>
+                <span class="text-xs font-mono px-2 py-0.5 rounded ${missingBadgeClass}">
+                  ${escapeHtml(missingBadgeText)}
+                </span>
+              </div>
+              <div class="space-y-1.5">
+                ${missingItemsHtml}
+              </div>
+            </div>
+
+            <!-- Detected Quality Flags -->
+            ${issuesHtml}
+
+            <!-- Recommended Action -->
+            <div class="fashion-gradient rounded-2xl p-5 border border-rose-200/70 space-y-2">
+              <div class="flex items-center gap-1.5">
+                <span class="text-[#E83E4F] text-xs">🛠</span>
+                <h3 class="font-display text-xs font-bold text-slate-900 uppercase tracking-wider">Recommended Action</h3>
+              </div>
+              <p class="text-xs text-slate-800 font-sans leading-relaxed">
+                Enrich missing attributes (fit, pattern) and include key style keywords to restore full faceted search eligibility.
+              </p>
+            </div>
+
+          </div>
+
+        </div>
+      `;
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>

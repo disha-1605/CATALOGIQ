@@ -29,22 +29,35 @@ DEFAULT_WEIGHTS = ScoringWeights()
 
 # Category-specific expected attributes
 CORE_ATTRIBUTES = ["brand", "title", "description", "category", "subcategory", "gender", "color", "material", "price"]
-APPAREL_CATEGORIES = {"Kurtas", "Shirts", "Jeans", "Dresses", "T-shirts", "Trousers", "Jackets"}
-UPPER_APPAREL_CATEGORIES = {"Kurtas", "Shirts", "Dresses", "T-shirts", "Jackets"}
+APPAREL_CATEGORIES = {
+    "Kurta", "Kurtas", "Shirt", "Shirts", "Jeans", "Dress", "Dresses", 
+    "T-Shirt", "T-shirts", "Trousers", "Cargo Pants", "Jacket", "Jackets"
+}
+UPPER_APPAREL_CATEGORIES = {
+    "Kurta", "Kurtas", "Shirt", "Shirts", "Dress", "Dresses", 
+    "T-Shirt", "T-shirts", "Jacket", "Jackets"
+}
 FOOTWEAR_CATEGORIES = {"Sneakers", "Running Shoes"}
-ACCESSORY_CATEGORIES = {"Handbags"}
+ACCESSORY_CATEGORIES = {"Handbag", "Handbags"}
 
 # Category keyword map for consistency verification
 CATEGORY_KEYWORDS = {
+    "Kurta": ["kurta", "kurti", "anarkali", "ethnic", "sherwani", "tunic"],
     "Kurtas": ["kurta", "kurti", "anarkali", "ethnic", "sherwani", "tunic"],
+    "Shirt": ["shirt", "button-down", "oxford", "formal shirt", "casual shirt"],
     "Shirts": ["shirt", "button-down", "oxford", "formal shirt", "casual shirt"],
-    "Jeans": ["jeans", "denim", "trouser", "pants", "skinny", "wide leg"],
+    "Jeans": ["jeans", "denim", "trouser", "pants", "skinny", "wide leg", "straight"],
+    "Dress": ["dress", "gown", "maxi", "midi", "frock", "jumpsuit"],
     "Dresses": ["dress", "gown", "maxi", "midi", "frock", "jumpsuit"],
     "Sneakers": ["sneaker", "sneakers", "trainer", "shoe", "footwear", "low-top", "high-top"],
     "Running Shoes": ["running", "sports shoe", "trainer", "athletic", "shoe", "marathon"],
+    "Jacket": ["jacket", "bomber", "blazer", "coat", "windbreaker", "biker"],
     "Jackets": ["jacket", "bomber", "blazer", "coat", "windbreaker", "biker"],
-    "T-shirts": ["t-shirt", "tshirt", "tee", "crewneck", "polo"],
+    "T-Shirt": ["t-shirt", "tshirt", "t shirt", "tee", "crewneck", "polo"],
+    "T-shirts": ["t-shirt", "tshirt", "t shirt", "tee", "crewneck", "polo"],
     "Trousers": ["trouser", "trousers", "pant", "pants", "chino", "cargos", "cargo"],
+    "Cargo Pants": ["cargo", "cargos", "cargo pants", "trouser", "trousers", "pant", "pants"],
+    "Handbag": ["handbag", "bag", "tote", "purse", "clutch", "satchel", "shoulder bag"],
     "Handbags": ["handbag", "bag", "tote", "purse", "clutch", "satchel", "shoulder bag"],
 }
 

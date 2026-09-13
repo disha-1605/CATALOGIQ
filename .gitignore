@@ -9,3 +9,15 @@ catalogiq.db
 *.db
 .DS_Store
 .env
+
+# Generated image datasets / archives
+CatalogIQ_Web_Image_Dataset/
+CatalogIQ_Web_Image_Dataset.zip
+CatalogIQ_Final_Image_Dataset.zip
+
+# Generated validation artifacts
+visual_validation_report.csv
+contact_sheet_200.jpg
+
+# Development-only visual validation
+frontend/contact_sheet.html

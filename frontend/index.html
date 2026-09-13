@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>CatalogIQ</title>
+  <script src="api.js"></script>
+  <script>
+    if (CatalogIQ_Auth.isAuthenticated()) {
+      window.location.replace('dashboard.html');
+    } else {
+      window.location.replace('login.html');
+    }
+  </script>
+</head>
+<body style="background:#FBF7F3; font-family:sans-serif; display:flex; align-items:center; justify-content:center; height:100vh; margin:0;">
+  <p style="color:#64748B; font-size:14px;">Redirecting to CatalogIQ...</p>
+</body>
+</html>

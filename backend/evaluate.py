@@ -1,72 +1,45 @@
 """Standalone Root Cause Engine Evaluation Script for CatalogIQ.
 
 Evaluates deterministic root-cause prediction against ground-truth labels
-embedded in the synthetic fashion dataset. Computes overall accuracy,
+loaded from root_cause_ground_truth.csv and searches.csv. Computes overall accuracy,
 confusion matrix, and per-class precision / recall / F1 metrics.
 """
 
+import os
+import pandas as pd
 from typing import Dict, List, Any
 from collections import defaultdict
-from backend.seed_data import generate_synthetic_products, generate_synthetic_searches
+from backend.seed_data import load_products_from_csv, load_searches_from_csv
 from backend.search_analyzer import analyze_query_coverage
 
-# Ground Truth Labels mapped to the 40 synthetic search queries
-GROUND_TRUTH_LABELS = {
-    # Group A: Intentionally designed with adequate catalog inventory but defective attributes
-    "black oversized kurta men": "ATTRIBUTE_GAP",
-    "oversized t shirt men": "ATTRIBUTE_GAP",
-    "linen shirt men": "ATTRIBUTE_GAP",
-    "wide leg jeans women": "ATTRIBUTE_GAP",
-    "relaxed cargo pants": "ATTRIBUTE_GAP",
-    "grey oversized hoodie men": "ATTRIBUTE_GAP",
-    "sleeveless summer dress women": "ATTRIBUTE_GAP",
-    "striped cotton shirt men": "ATTRIBUTE_GAP",
-    "olive green cargo pants": "ATTRIBUTE_GAP",
-    "black casual trousers men": "ATTRIBUTE_GAP",
-    "slim fit jeans men": "ATTRIBUTE_GAP",
-    "floral maxi dress women": "ATTRIBUTE_GAP",
-    "navy blue formal trousers men": "ATTRIBUTE_GAP",
-    "printed anarkali kurta women": "ATTRIBUTE_GAP",
-
-    # Group B: Intentionally designed with understocked catalog depth (< 4 items)
-    "waterproof running shoes women": "INVENTORY_GAP",
-    "white silk ethnic jacket women": "INVENTORY_GAP",
-    "green running shoes women": "INVENTORY_GAP",
-    "maroon embroidered kurta women": "INVENTORY_GAP",
-    "black sneakers women": "INVENTORY_GAP",
-    "yellow linen trousers women": "INVENTORY_GAP",
-    "silk anarkali kurta women": "INVENTORY_GAP",
-    "red leather jacket women": "INVENTORY_GAP",
-    "women formal trousers": "INVENTORY_GAP",
-    "women bomber jacket": "INVENTORY_GAP",
-    "white athletic running shoes women": "INVENTORY_GAP",
-    "women leather sneakers": "INVENTORY_GAP",
-    "women casual shirts": "INVENTORY_GAP",
-
-    # Group C: Intentionally designed with adequate inventory & complete attributes
-    "formal white shirt men": "NO_CATALOG_GAP_DETECTED",
-    "casual blue shirt men": "NO_CATALOG_GAP_DETECTED",
-    "cotton t-shirt men": "NO_CATALOG_GAP_DETECTED",
-    "black running shoes men": "NO_CATALOG_GAP_DETECTED",
-    "blue slim jeans men": "NO_CATALOG_GAP_DETECTED",
-    "casual denim jacket men": "NO_CATALOG_GAP_DETECTED",
-    "women tote handbag": "NO_CATALOG_GAP_DETECTED",
-    "women pink dress": "NO_CATALOG_GAP_DETECTED",
-    "white sneakers men": "NO_CATALOG_GAP_DETECTED",
-    "solid black t shirt men": "NO_CATALOG_GAP_DETECTED",
-    "brown leather handbag women": "NO_CATALOG_GAP_DETECTED",
-    "leather handbag women": "NO_CATALOG_GAP_DETECTED",
-    "cotton summer dress women": "NO_CATALOG_GAP_DETECTED",
-}
-
+DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 CLASSES = ["ATTRIBUTE_GAP", "INVENTORY_GAP", "NO_CATALOG_GAP_DETECTED"]
+
+
+def get_ground_truth_map() -> Dict[str, str]:
+    """Load ground truth mappings from CSV."""
+    gt_path = os.path.join(DATA_DIR, "root_cause_ground_truth.csv")
+    s_path = os.path.join(DATA_DIR, "searches.csv")
+    
+    gt_df = pd.read_csv(gt_path)
+    s_df = pd.read_csv(s_path)
+    
+    merged = pd.merge(s_df, gt_df, on="query_id")
+    gt_map = {}
+    for _, row in merged.iterrows():
+        expected = str(row["expected_root_cause"])
+        if expected == "NO_CATALOG_GAP":
+            expected = "NO_CATALOG_GAP_DETECTED"
+        gt_map[str(row["query"])] = expected
+    return gt_map
 
 
 def run_evaluation() -> Dict[str, Any]:
     """Execute evaluation and compute precision, recall, F1, and accuracy."""
-    products = generate_synthetic_products(200)
+    products = load_products_from_csv()
+    ground_truth_labels = get_ground_truth_map()
     
-    total = len(GROUND_TRUTH_LABELS)
+    total = len(ground_truth_labels)
     correct_count = 0
     
     # Confusion matrix: matrix[ground_truth][predicted]
@@ -74,7 +47,7 @@ def run_evaluation() -> Dict[str, Any]:
     
     query_results = []
     
-    for query_text, gt_label in GROUND_TRUTH_LABELS.items():
+    for query_text, gt_label in ground_truth_labels.items():
         analysis = analyze_query_coverage(query_text, products)
         pred_label = analysis["root_cause"]
         
@@ -150,14 +123,13 @@ def print_evaluation_report(results: Dict[str, Any]):
         print(f"{gt:<26} | {row['ATTRIBUTE_GAP']:>10} | {row['INVENTORY_GAP']:>10} | {row['NO_CATALOG_GAP_DETECTED']:>10}")
     print("-" * 65)
 
-    # Print any misclassifications if they exist
     misclassifications = [q for q in results["query_results"] if not q["correct"]]
     if misclassifications:
         print(f"\nMisclassified Queries ({len(misclassifications)}):")
         for m in misclassifications:
             print(f"  - '{m['query']}': Ground Truth = {m['ground_truth']}, Predicted = {m['predicted']} (Rel={m['relevant_count']}, Cov={m['coverage']})")
     else:
-        print("\nAll 40 search queries predicted with 100% exact ground truth alignment.")
+        print("\nAll 40 search queries predicted with exact ground truth alignment.")
     print("=" * 75)
 
 
