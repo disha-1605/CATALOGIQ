@@ -52,6 +52,7 @@ from backend.email_service import (
     build_requester_approved_email,
     build_admin_approved_confirmation_email,
     build_test_email,
+    get_email_config,
     get_smtp_config,
     get_base_url,
     get_api_base_url,
@@ -930,13 +931,20 @@ def get_email_config_status():
     Diagnostic endpoint returning boolean configuration status without exposing secrets.
     Never exposes passwords, tokens, or private keys.
     """
-    cfg = get_smtp_config()
+    cfg = get_email_config()
     return {
+        "provider": cfg.get("active_provider"),
+        "configured": cfg.get("active_provider") != "not_configured",
+        "active_transport": cfg.get("active_provider"),
+        "apps_script_url_configured": bool(cfg.get("apps_script_url")),
+        "secret_configured": bool(cfg.get("apps_script_secret")),
+        "google_apps_script_configured": bool(cfg.get("apps_script_url")),
         "smtp_host_configured": bool(cfg.get("host")),
         "smtp_port_configured": bool(cfg.get("port")),
         "smtp_username_configured": bool(cfg.get("user")),
         "smtp_password_configured": bool(cfg.get("password")),
         "email_from_configured": bool(cfg.get("email_from")),
+        "email_from": cfg.get("email_from"),
         "admin_notification_email_configured": bool(cfg.get("admin_email")),
         "admin_notification_email": cfg.get("admin_email"),
         "app_base_url": cfg.get("app_base_url"),

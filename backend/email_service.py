@@ -12,6 +12,7 @@ from datetime import datetime
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict, Any, Optional, Tuple
+import httpx
 from dotenv import load_dotenv
 
 # Ensure .env is loaded
@@ -46,8 +47,22 @@ def get_admin_notification_email() -> str:
     return (os.getenv("ADMIN_NOTIFICATION_EMAIL") or "dishasengar1june@gmail.com").strip()
 
 
-def get_smtp_config() -> Dict[str, Any]:
-    """Dynamically read current SMTP environment variables."""
+def _parse_sender(raw_from: str) -> Tuple[str, str]:
+    """Extract (name, email) from 'Name <email@domain.com>' or 'email@domain.com'."""
+    raw = (raw_from or "").strip()
+    if "<" in raw and raw.endswith(">"):
+        parts = raw.split("<", 1)
+        name = parts[0].strip().strip("\"'") or "CatalogIQ Access Desk"
+        email = parts[1].rstrip(">").strip()
+        return name, email
+    return "CatalogIQ Access Desk", raw or "dishasengar1june@gmail.com"
+
+
+def get_email_config() -> Dict[str, Any]:
+    """Dynamically read current email environment variables (Google Apps Script and SMTP)."""
+    apps_script_url = os.getenv("GOOGLE_APPS_SCRIPT_URL", "").strip()
+    apps_script_secret = os.getenv("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+
     host = os.getenv("SMTP_HOST", "").strip()
     port_str = os.getenv("SMTP_PORT", "587").strip()
     try:
@@ -61,12 +76,24 @@ def get_smtp_config() -> Dict[str, Any]:
     use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() in ("true", "1", "yes") or port == 465
     use_tls = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes") and not use_ssl
 
-    email_from = (os.getenv("EMAIL_FROM") or user or "CatalogIQ Access Desk <noreply@catalogiq.demo>").strip()
     admin_email = get_admin_notification_email()
     app_base_url = get_base_url()
     api_base_url = get_api_base_url()
 
+    email_from = (os.getenv("EMAIL_FROM") or "dishasengar1june@gmail.com").strip()
+
+    # Provider priority: Google Apps Script -> SMTP -> not_configured
+    if apps_script_url:
+        active_provider = "google_apps_script"
+    elif host and user and password:
+        active_provider = "smtp"
+    else:
+        active_provider = "not_configured"
+
     return {
+        "active_provider": active_provider,
+        "apps_script_url": apps_script_url,
+        "apps_script_secret": apps_script_secret,
         "host": host,
         "port": port,
         "user": user,
@@ -80,6 +107,11 @@ def get_smtp_config() -> Dict[str, Any]:
     }
 
 
+def get_smtp_config() -> Dict[str, Any]:
+    """Dynamically read current SMTP/API environment variables (backwards compatibility)."""
+    return get_email_config()
+
+
 ADMIN_NOTIFICATION_EMAIL = get_admin_notification_email()
 EMAIL_FROM = os.getenv("EMAIL_FROM", "CatalogIQ Access Desk <noreply@catalogiq.demo>")
 APP_BASE_URL = get_base_url()
@@ -87,43 +119,146 @@ API_BASE_URL = get_api_base_url()
 
 
 def is_smtp_configured() -> bool:
-    """Check if real SMTP credentials are provided in the environment."""
-    cfg = get_smtp_config()
-    return bool(cfg["host"] and cfg["user"] and cfg["password"])
+    """Check if real email credentials (Google Apps Script or SMTP) are provided in the environment."""
+    cfg = get_email_config()
+    return cfg["active_provider"] != "not_configured"
 
 
-def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
-    """
-    Send an email using configured SMTP provider with explicit error reporting.
-    Distinguishes honestly between accepted delivery, authentication failure,
-    connection failure, and unconfigured dev fallback.
-    Never exposes credentials or secrets.
-    """
-    cfg = get_smtp_config()
-    to_clean = (to or "").strip()
+# =========================================================================
+# GOOGLE APPS SCRIPT HTTPS TRANSPORT (Port 443 Relay)
+# =========================================================================
+
+def _send_via_google_apps_script(cfg: Dict[str, Any], to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
+    """Dispatch email via Google Apps Script HTTPS Web App (Port 443)."""
+    url = cfg["apps_script_url"]
+    secret = cfg["apps_script_secret"]
+
+    payload = {
+        "secret": secret,
+        "to": to,
+        "subject": subject,
+        "html": html,
+        "text": text,
+    }
+    headers = {
+        "Content-Type": "application/json",
+    }
     
-    if not (cfg["host"] and cfg["user"] and cfg["password"]):
-        # Development / Unconfigured Fallback Mode
-        logger.info(f"[DEV EMAIL LOG] To: {to_clean} | Subject: {subject}")
-        print("\n" + "=" * 70)
-        print(f"📧 [CATALOGIQ DEV EMAIL LOG] To: {to_clean}")
-        print(f"Subject: {subject}")
-        print("-" * 70)
-        print(text)
-        print("=" * 70 + "\n")
+    try:
+        # follow_redirects=True is required because Google Apps Script doPost redirects (302) to echo URL
+        with httpx.Client(timeout=15.0, follow_redirects=True) as client:
+            resp = client.post(url, headers=headers, json=payload)
+            
+            if resp.status_code in (200, 201):
+                try:
+                    data = resp.json()
+                except Exception:
+                    data = {}
+
+                if data.get("success") is True:
+                    logger.info(f"Email successfully accepted by Google Apps Script for recipient: {to}")
+                    return {
+                        "success": True,
+                        "mode": "google_apps_script",
+                        "provider": "google_apps_script",
+                        "recipient": to,
+                        "smtp_connection": "PASS",
+                        "smtp_authentication": "PASS",
+                        "message_accepted": "PASS",
+                        "error_type": None,
+                        "safe_error_message": None,
+                        "message": f"Email delivered to {to} via Google Apps Script (Gmail)",
+                    }
+                else:
+                    err_msg = data.get("error") or data.get("message") or f"Apps Script rejected delivery (HTTP {resp.status_code})"
+                    is_auth_err = "unauthorized" in err_msg.lower() or "secret" in err_msg.lower() or "auth" in err_msg.lower()
+                    logger.error(f"Google Apps Script delivery error: {err_msg}")
+                    return {
+                        "success": False,
+                        "mode": "google_apps_script_auth_error" if is_auth_err else "google_apps_script_error",
+                        "provider": "google_apps_script",
+                        "recipient": to,
+                        "smtp_connection": "PASS",
+                        "smtp_authentication": "FAIL" if is_auth_err else "PASS",
+                        "message_accepted": "FAIL",
+                        "error_type": "authentication_failure" if is_auth_err else "delivery_error",
+                        "safe_error_message": "Google Apps Script rejected shared secret. Verify GOOGLE_APPS_SCRIPT_SECRET." if is_auth_err else f"Google Apps Script delivery failed: {err_msg}",
+                        "message": f"Email delivery failed: {err_msg}",
+                    }
+            elif resp.status_code in (401, 403):
+                logger.error(f"Google Apps Script unauthorized (HTTP {resp.status_code})")
+                return {
+                    "success": False,
+                    "mode": "google_apps_script_auth_error",
+                    "provider": "google_apps_script",
+                    "recipient": to,
+                    "smtp_connection": "PASS",
+                    "smtp_authentication": "FAIL",
+                    "message_accepted": "FAIL",
+                    "error_type": "authentication_failure",
+                    "safe_error_message": "Google Apps Script authentication failed. Verify GOOGLE_APPS_SCRIPT_SECRET.",
+                    "message": "Email delivery failed: Google Apps Script authentication error.",
+                }
+            else:
+                logger.error(f"Google Apps Script returned HTTP {resp.status_code}")
+                return {
+                    "success": False,
+                    "mode": "google_apps_script_error",
+                    "provider": "google_apps_script",
+                    "recipient": to,
+                    "smtp_connection": "PASS",
+                    "smtp_authentication": "UNKNOWN",
+                    "message_accepted": "FAIL",
+                    "error_type": "transport_failure",
+                    "safe_error_message": f"Google Apps Script returned HTTP {resp.status_code}.",
+                    "message": f"Email delivery failed: Apps Script HTTP {resp.status_code}",
+                }
+    except (httpx.ConnectError, socket.gaierror) as conn_err:
+        logger.error(f"Could not connect to Google Apps Script URL: {conn_err}")
         return {
             "success": False,
-            "mode": "not_configured",
-            "recipient": to_clean,
-            "smtp_connection": "SKIPPED",
+            "mode": "google_apps_script_conn_error",
+            "provider": "google_apps_script",
+            "recipient": to,
+            "smtp_connection": "FAIL",
             "smtp_authentication": "SKIPPED",
-            "message_accepted": "SKIPPED",
-            "error_type": "configuration_missing",
-            "safe_error_message": "SMTP credentials (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD) are not set in environment.",
-            "message": "Access request created, but email delivery is not configured.",
+            "message_accepted": "FAIL",
+            "error_type": "connection_failure",
+            "safe_error_message": "Could not connect to Google Apps Script Web App URL.",
+            "message": "Email delivery failed: HTTPS connection error.",
+        }
+    except httpx.TimeoutException:
+        logger.error("Google Apps Script request timed out")
+        return {
+            "success": False,
+            "mode": "google_apps_script_timeout",
+            "provider": "google_apps_script",
+            "recipient": to,
+            "smtp_connection": "FAIL",
+            "smtp_authentication": "UNKNOWN",
+            "message_accepted": "FAIL",
+            "error_type": "timeout",
+            "safe_error_message": "Google Apps Script Web App request timed out.",
+            "message": "Email delivery failed: Request timeout.",
+        }
+    except Exception as exc:
+        logger.error(f"Unexpected error in Google Apps Script delivery to {to}: {exc}")
+        return {
+            "success": False,
+            "mode": "google_apps_script_error",
+            "provider": "google_apps_script",
+            "recipient": to,
+            "smtp_connection": "UNKNOWN",
+            "smtp_authentication": "UNKNOWN",
+            "message_accepted": "FAIL",
+            "error_type": "delivery_error",
+            "safe_error_message": "An unexpected error occurred during Google Apps Script email delivery.",
+            "message": "Email delivery failed due to a server error.",
         }
 
-    # Prepare MIME message
+
+def _send_via_smtp(cfg: Dict[str, Any], to_clean: str, subject: str, html: str, text: str) -> Dict[str, Any]:
+    """Dispatch email via direct SMTP with STARTTLS/SSL (local development fallback)."""
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = cfg["email_from"]
@@ -156,6 +291,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": True,
             "mode": "smtp",
+            "provider": "smtp",
             "recipient": to_clean,
             "smtp_connection": "PASS",
             "smtp_authentication": "PASS",
@@ -170,6 +306,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "mode": "smtp_auth_error",
+            "provider": "smtp",
             "recipient": to_clean,
             "smtp_connection": "PASS",
             "smtp_authentication": "FAIL",
@@ -183,6 +320,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "mode": "smtp_conn_error",
+            "provider": "smtp",
             "recipient": to_clean,
             "smtp_connection": "FAIL",
             "smtp_authentication": "SKIPPED",
@@ -196,6 +334,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "mode": "smtp_recipient_refused",
+            "provider": "smtp",
             "recipient": to_clean,
             "smtp_connection": "PASS",
             "smtp_authentication": "PASS",
@@ -209,6 +348,7 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "mode": "smtp_error",
+            "provider": "smtp",
             "recipient": to_clean,
             "smtp_connection": "UNKNOWN",
             "smtp_authentication": "UNKNOWN",
@@ -223,6 +363,44 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
                 server.close()
             except Exception:
                 pass
+
+
+def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
+    """
+    Send an email using Google Apps Script HTTPS relay or fallback SMTP.
+    Distinguishes honestly between accepted delivery, authentication failure,
+    connection failure, and unconfigured dev fallback.
+    Never exposes credentials, secrets, or passwords.
+    """
+    cfg = get_email_config()
+    to_clean = (to or "").strip()
+    provider = cfg["active_provider"]
+
+    if provider == "google_apps_script":
+        return _send_via_google_apps_script(cfg, to_clean, subject, html, text)
+    elif provider == "smtp":
+        return _send_via_smtp(cfg, to_clean, subject, html, text)
+    else:
+        # Development / Unconfigured Fallback Mode
+        logger.info(f"[DEV EMAIL LOG] To: {to_clean} | Subject: {subject}")
+        print("\n" + "=" * 70)
+        print(f"📧 [CATALOGIQ DEV EMAIL LOG] To: {to_clean}")
+        print(f"Subject: {subject}")
+        print("-" * 70)
+        print(text)
+        print("=" * 70 + "\n")
+        return {
+            "success": False,
+            "mode": "not_configured",
+            "provider": "none",
+            "recipient": to_clean,
+            "smtp_connection": "SKIPPED",
+            "smtp_authentication": "SKIPPED",
+            "message_accepted": "SKIPPED",
+            "error_type": "configuration_missing",
+            "safe_error_message": "Email delivery is not configured. Set GOOGLE_APPS_SCRIPT_URL & GOOGLE_APPS_SCRIPT_SECRET (or SMTP) in environment.",
+            "message": "Access request created, but email delivery is not configured.",
+        }
 
 
 # =========================================================================
