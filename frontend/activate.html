@@ -189,7 +189,7 @@
       }
 
       try {
-        const res = await fetch(`http://localhost:8000/api/access-requests/validate-activation?token=${encodeURIComponent(activationToken)}`);
+        const res = await fetch(`/api/access-requests/validate-activation?token=${encodeURIComponent(activationToken)}`);
         if (!res.ok) {
           const errData = await res.json();
           showError(errData.detail || 'Activation link is invalid or has expired.');
@@ -240,7 +240,7 @@
       btn.innerHTML = `<span>Activating...</span>`;
 
       try {
-        const res = await fetch('http://localhost:8000/api/access-requests/activate', {
+        const res = await fetch('/api/access-requests/activate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
