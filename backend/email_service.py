@@ -20,11 +20,34 @@ load_dotenv()
 logger = logging.getLogger("catalogiq.email")
 
 
+def get_base_url() -> str:
+    """Resolve the production application base URL dynamically."""
+    explicit = os.getenv("APP_BASE_URL", "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    render_url = os.getenv("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+    if render_url:
+        return render_url
+    if os.getenv("APP_ENV") == "production":
+        return "https://catalogiq-c4cr.onrender.com"
+    return "http://localhost:3000"
+
+
+def get_api_base_url() -> str:
+    """Resolve the production API base URL dynamically."""
+    explicit = os.getenv("API_BASE_URL", "").strip().rstrip("/")
+    if explicit:
+        return explicit
+    return get_base_url()
+
+
+def get_admin_notification_email() -> str:
+    """Resolve the admin notification email recipient."""
+    return (os.getenv("ADMIN_NOTIFICATION_EMAIL") or "dishasengar1june@gmail.com").strip()
+
+
 def get_smtp_config() -> Dict[str, Any]:
     """Dynamically read current SMTP environment variables."""
-    # Reload in case .env was modified at runtime
-    load_dotenv(override=True)
-    
     host = os.getenv("SMTP_HOST", "").strip()
     port_str = os.getenv("SMTP_PORT", "587").strip()
     try:
@@ -38,10 +61,10 @@ def get_smtp_config() -> Dict[str, Any]:
     use_ssl = os.getenv("SMTP_USE_SSL", "false").lower() in ("true", "1", "yes") or port == 465
     use_tls = os.getenv("SMTP_USE_TLS", "true").lower() in ("true", "1", "yes") and not use_ssl
 
-    email_from = os.getenv("EMAIL_FROM", "CatalogIQ Access Desk <noreply@catalogiq.demo>").strip()
-    admin_email = os.getenv("ADMIN_NOTIFICATION_EMAIL", "dishasengar1june@gmail.com").strip()
-    app_base_url = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
-    api_base_url = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+    email_from = (os.getenv("EMAIL_FROM") or user or "CatalogIQ Access Desk <noreply@catalogiq.demo>").strip()
+    admin_email = get_admin_notification_email()
+    app_base_url = get_base_url()
+    api_base_url = get_api_base_url()
 
     return {
         "host": host,
@@ -57,10 +80,10 @@ def get_smtp_config() -> Dict[str, Any]:
     }
 
 
-ADMIN_NOTIFICATION_EMAIL = os.getenv("ADMIN_NOTIFICATION_EMAIL", "dishasengar1june@gmail.com")
+ADMIN_NOTIFICATION_EMAIL = get_admin_notification_email()
 EMAIL_FROM = os.getenv("EMAIL_FROM", "CatalogIQ Access Desk <noreply@catalogiq.demo>")
-APP_BASE_URL = os.getenv("APP_BASE_URL", "http://localhost:3000").rstrip("/")
-API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000").rstrip("/")
+APP_BASE_URL = get_base_url()
+API_BASE_URL = get_api_base_url()
 
 
 def is_smtp_configured() -> bool:
@@ -74,14 +97,16 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
     Send an email using configured SMTP provider with explicit error reporting.
     Distinguishes honestly between accepted delivery, authentication failure,
     connection failure, and unconfigured dev fallback.
+    Never exposes credentials or secrets.
     """
     cfg = get_smtp_config()
+    to_clean = (to or "").strip()
     
     if not (cfg["host"] and cfg["user"] and cfg["password"]):
         # Development / Unconfigured Fallback Mode
-        logger.info(f"[DEV EMAIL LOG] To: {to} | Subject: {subject}")
+        logger.info(f"[DEV EMAIL LOG] To: {to_clean} | Subject: {subject}")
         print("\n" + "=" * 70)
-        print(f"📧 [CATALOGIQ DEV EMAIL LOG] To: {to}")
+        print(f"📧 [CATALOGIQ DEV EMAIL LOG] To: {to_clean}")
         print(f"Subject: {subject}")
         print("-" * 70)
         print(text)
@@ -89,19 +114,20 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "mode": "not_configured",
-            "recipient": to,
+            "recipient": to_clean,
             "smtp_connection": "SKIPPED",
             "smtp_authentication": "SKIPPED",
             "message_accepted": "SKIPPED",
+            "error_type": "configuration_missing",
+            "safe_error_message": "SMTP credentials (SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD) are not set in environment.",
             "message": "Access request created, but email delivery is not configured.",
-            "detail": "SMTP credentials (SMTP_HOST, SMTP_USER, SMTP_PASSWORD) are not set in .env.",
         }
 
     # Prepare MIME message
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = cfg["email_from"]
-    msg["To"] = to
+    msg["To"] = to_clean
 
     part_text = MIMEText(text, "plain", "utf-8")
     part_html = MIMEText(html, "html", "utf-8")
@@ -123,18 +149,20 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         server.login(cfg["user"], cfg["password"])
         
         # Send
-        server.sendmail(cfg["email_from"], [to], msg.as_string())
+        server.sendmail(cfg["email_from"], [to_clean], msg.as_string())
         server.quit()
 
-        logger.info(f"Email successfully accepted by SMTP server for recipient: {to}")
+        logger.info(f"Email successfully accepted by SMTP server for recipient: {to_clean}")
         return {
             "success": True,
             "mode": "smtp",
-            "recipient": to,
+            "recipient": to_clean,
             "smtp_connection": "PASS",
             "smtp_authentication": "PASS",
             "message_accepted": "PASS",
-            "message": f"Email delivered to {to} via SMTP ({cfg['host']})",
+            "error_type": None,
+            "safe_error_message": None,
+            "message": f"Email delivered to {to_clean} via SMTP ({cfg['host']})",
         }
 
     except smtplib.SMTPAuthenticationError as auth_err:
@@ -142,48 +170,52 @@ def send_email(to: str, subject: str, html: str, text: str) -> Dict[str, Any]:
         return {
             "success": False,
             "mode": "smtp_auth_error",
-            "recipient": to,
+            "recipient": to_clean,
             "smtp_connection": "PASS",
             "smtp_authentication": "FAIL",
             "message_accepted": "FAIL",
-            "error": "Email delivery failed: SMTP authentication error.",
-            "detail": f"Authentication rejected by {cfg['host']}. If using Gmail, make sure to use a 16-character Google App Password. (Details: {auth_err.smtp_error})",
+            "error_type": "authentication_failure",
+            "safe_error_message": "SMTP authentication failed. Verify SMTP username and Google App Password.",
+            "message": "Email delivery failed: SMTP authentication error.",
         }
     except (smtplib.SMTPConnectError, socket.timeout, ConnectionRefusedError, socket.gaierror) as conn_err:
         logger.error(f"SMTP connection failed to {cfg['host']}:{cfg['port']}: {conn_err}")
         return {
             "success": False,
             "mode": "smtp_conn_error",
-            "recipient": to,
+            "recipient": to_clean,
             "smtp_connection": "FAIL",
             "smtp_authentication": "SKIPPED",
             "message_accepted": "FAIL",
-            "error": "Email delivery failed: SMTP connection error.",
-            "detail": f"Could not connect to SMTP server {cfg['host']}:{cfg['port']} ({conn_err}).",
+            "error_type": "connection_failure",
+            "safe_error_message": f"Could not connect to SMTP server {cfg['host']}:{cfg['port']}.",
+            "message": "Email delivery failed: SMTP connection error.",
         }
     except smtplib.SMTPRecipientsRefused as rec_err:
-        logger.error(f"SMTP recipient refused for {to}: {rec_err}")
+        logger.error(f"SMTP recipient refused for {to_clean}: {rec_err}")
         return {
             "success": False,
             "mode": "smtp_recipient_refused",
-            "recipient": to,
+            "recipient": to_clean,
             "smtp_connection": "PASS",
             "smtp_authentication": "PASS",
             "message_accepted": "FAIL",
-            "error": f"Email delivery failed: Recipient address refused ({to}).",
-            "detail": str(rec_err),
+            "error_type": "recipient_refused",
+            "safe_error_message": f"Recipient address refused: {to_clean}.",
+            "message": f"Email delivery failed: Recipient address refused ({to_clean}).",
         }
     except Exception as exc:
-        logger.error(f"SMTP unexpected delivery error to {to}: {exc}")
+        logger.error(f"SMTP delivery error to {to_clean}: {exc}")
         return {
             "success": False,
             "mode": "smtp_error",
-            "recipient": to,
+            "recipient": to_clean,
             "smtp_connection": "UNKNOWN",
             "smtp_authentication": "UNKNOWN",
             "message_accepted": "FAIL",
-            "error": f"Email delivery failed: {str(exc)}",
-            "detail": str(exc),
+            "error_type": "delivery_error",
+            "safe_error_message": "An unexpected SMTP delivery error occurred.",
+            "message": "Email delivery failed due to a server error.",
         }
     finally:
         if server:

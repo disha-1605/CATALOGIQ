@@ -36,6 +36,7 @@ from backend.schemas import (
     UserProfile,
     TestEmailRequest,
 )
+import logging
 from backend.scoring import evaluate_product_health
 from backend.llm_explainer import generate_llm_explanation
 from backend.auth import (
@@ -51,10 +52,16 @@ from backend.email_service import (
     build_requester_approved_email,
     build_admin_approved_confirmation_email,
     build_test_email,
+    get_smtp_config,
+    get_base_url,
+    get_api_base_url,
+    get_admin_notification_email,
     ADMIN_NOTIFICATION_EMAIL,
     API_BASE_URL,
     APP_BASE_URL,
 )
+
+logger = logging.getLogger("catalogiq.api")
 
 
 def seed_admin_user():
@@ -600,9 +607,10 @@ def create_access_request(payload: AccessRequestCreate, db: Session = Depends(ge
     db.commit()
     db.refresh(new_req)
 
-    # Build approval & reject URLs
-    approval_url = f"{API_BASE_URL}/api/access-requests/{request_id}/approve?token={approval_token}"
-    reject_url = f"{API_BASE_URL}/api/access-requests/{request_id}/reject?token={approval_token}"
+    # Build approval & reject URLs dynamically using production/request base URL
+    api_base = get_api_base_url()
+    approval_url = f"{api_base}/api/access-requests/{request_id}/approve?token={approval_token}"
+    reject_url = f"{api_base}/api/access-requests/{request_id}/reject?token={approval_token}"
 
     # Build and dispatch Admin Email
     html_body, text_body = build_admin_notification_email(
@@ -615,18 +623,38 @@ def create_access_request(payload: AccessRequestCreate, db: Session = Depends(ge
         reject_url=reject_url,
         created_at_formatted=now_formatted,
     )
+    admin_recipient = get_admin_notification_email()
     email_res = send_email(
-        to=ADMIN_NOTIFICATION_EMAIL,
+        to=admin_recipient,
         subject="CatalogIQ — New Access Request",
         html=html_body,
         text=text_body,
     )
 
+    # Safe structured logging (never logs passwords or tokens)
+    logger.info(
+        f"[CATALOGIQ] Admin access-request email result: "
+        f"success={email_res.get('success')}, "
+        f"mode={email_res.get('mode')}, "
+        f"recipient={email_res.get('recipient')}, "
+        f"smtp_connection={email_res.get('smtp_connection')}, "
+        f"smtp_authentication={email_res.get('smtp_authentication')}, "
+        f"message_accepted={email_res.get('message_accepted')}, "
+        f"error={email_res.get('safe_error_message')}"
+    )
+
+    delivery_status = "Email sent to administrator." if email_res.get("success") else email_res.get("message", "Email not configured")
+
     return {
         "success": True,
         "message": "Access request submitted successfully.",
         "request_id": request_id,
-        "email_delivery": email_res.get("message", "Dispatched"),
+        "email_delivery": delivery_status,
+        "email_status": {
+            "mode": email_res.get("mode"),
+            "accepted": email_res.get("message_accepted"),
+            "error": email_res.get("safe_error_message"),
+        }
     }
 
 
@@ -704,7 +732,8 @@ def approve_access_request(request_id: str, token: str = Query(...), db: Session
     db.commit()
 
     # Build activation URL & send requester email
-    activation_url = f"{APP_BASE_URL}/activate.html?token={activation_token}"
+    app_base = get_base_url()
+    activation_url = f"{app_base}/activate.html?token={activation_token}"
     req_html, req_text = build_requester_approved_email(
         name=req.name,
         organization=req.organization,
@@ -718,7 +747,17 @@ def approve_access_request(request_id: str, token: str = Query(...), db: Session
         text=req_text,
     )
 
-    print(f"[CATALOGIQ] Requester activation email result: {requester_email_result}")
+    # Safe structured logging
+    logger.info(
+        f"[CATALOGIQ] Requester activation email result: "
+        f"success={requester_email_result.get('success')}, "
+        f"mode={requester_email_result.get('mode')}, "
+        f"recipient={requester_email_result.get('recipient')}, "
+        f"smtp_connection={requester_email_result.get('smtp_connection')}, "
+        f"smtp_authentication={requester_email_result.get('smtp_authentication')}, "
+        f"message_accepted={requester_email_result.get('message_accepted')}, "
+        f"error={requester_email_result.get('safe_error_message')}"
+    )
 
     # Send confirmation to admin
     admin_html, admin_text = build_admin_approved_confirmation_email(
@@ -727,12 +766,29 @@ def approve_access_request(request_id: str, token: str = Query(...), db: Session
         organization=req.organization,
         approved_at_formatted=now_formatted,
     )
-    send_email(
-        to=ADMIN_NOTIFICATION_EMAIL,
+    admin_recipient = get_admin_notification_email()
+    admin_confirm_result = send_email(
+        to=admin_recipient,
         subject="CatalogIQ — Access Request Approved",
         html=admin_html,
         text=admin_text,
     )
+
+    logger.info(
+        f"[CATALOGIQ] Admin approval confirmation email result: "
+        f"success={admin_confirm_result.get('success')}, "
+        f"mode={admin_confirm_result.get('mode')}, "
+        f"recipient={admin_confirm_result.get('recipient')}, "
+        f"smtp_connection={admin_confirm_result.get('smtp_connection')}, "
+        f"auth={admin_confirm_result.get('smtp_authentication')}, "
+        f"accepted={admin_confirm_result.get('message_accepted')}, "
+        f"error={admin_confirm_result.get('safe_error_message')}"
+    )
+
+    # Notice message on action page if email was not accepted
+    status_note = ""
+    if not requester_email_result.get("success"):
+        status_note = f"<div style='margin-top:16px; padding:12px; background:#FEF3C7; border:1px solid #FCD34D; border-radius:8px; font-size:12px; color:#92400E;'>Note: Automated email delivery status: {requester_email_result.get('message', 'Unconfigured')}. Activation link: <a href='{activation_url}' style='color:#1E40AF; word-break:break-all;'>{activation_url}</a></div>"
 
     return HTMLResponse(
         content=_render_action_page(
@@ -740,9 +796,9 @@ def approve_access_request(request_id: str, token: str = Query(...), db: Session
             status_badge="ACCESS GRANTED",
             badge_color="#03543F",
             heading="Access Approved Successfully",
-            message=f"Access for <strong>{req.name}</strong> ({req.organization}) has been approved.<br/><br/>An activation email with password setup instructions has been dispatched to <code style='background:#F3F4F6; padding:2px 6px; border-radius:4px;'>{req.email}</code>.",
+            message=f"Access for <strong>{req.name}</strong> ({req.organization}) has been approved.<br/><br/>An activation email with password setup instructions has been dispatched to <code style='background:#F3F4F6; padding:2px 6px; border-radius:4px;'>{req.email}</code>.{status_note}",
             action_btn_text="Return to CatalogIQ",
-            action_btn_url=f"{APP_BASE_URL}/dashboard.html",
+            action_btn_url=f"{app_base}/dashboard.html",
         )
     )
 
@@ -868,13 +924,36 @@ def list_access_requests(db: Session = Depends(get_db)):
     return db.query(AccessRequest).order_by(desc(AccessRequest.created_at)).all()
 
 
+@app.get("/api/admin/email-config-status", tags=["Administration"])
+def get_email_config_status():
+    """
+    Diagnostic endpoint returning boolean configuration status without exposing secrets.
+    Never exposes passwords, tokens, or private keys.
+    """
+    cfg = get_smtp_config()
+    return {
+        "smtp_host_configured": bool(cfg.get("host")),
+        "smtp_port_configured": bool(cfg.get("port")),
+        "smtp_username_configured": bool(cfg.get("user")),
+        "smtp_password_configured": bool(cfg.get("password")),
+        "email_from_configured": bool(cfg.get("email_from")),
+        "admin_notification_email_configured": bool(cfg.get("admin_email")),
+        "admin_notification_email": cfg.get("admin_email"),
+        "app_base_url": cfg.get("app_base_url"),
+        "api_base_url": cfg.get("api_base_url"),
+    }
+
+
 @app.post("/api/admin/test-email", tags=["Administration"])
+@app.get("/api/admin/test-email", tags=["Administration"])
 def test_email_delivery(payload: Optional[TestEmailRequest] = None):
     """
     Safe administrative delivery test endpoint.
     Dispatches a live test email to the designated recipient and returns explicit SMTP diagnostic status.
+    Never exposes passwords or sensitive credentials.
     """
-    recipient = (payload.recipient if payload and payload.recipient else "dishasengar1june@gmail.com").strip()
+    admin_recipient = get_admin_notification_email()
+    recipient = (payload.recipient if payload and payload.recipient else admin_recipient).strip()
     now_formatted = datetime.utcnow().strftime("%d %b %Y, %H:%M:%S UTC")
     html_body, text_body = build_test_email(recipient, now_formatted)
     

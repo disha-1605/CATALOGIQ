@@ -10,7 +10,27 @@ from backend.models import AccessRequest, User
 from backend.auth import hash_password, verify_password, generate_secure_token
 from backend.email_service import is_smtp_configured, send_email
 
+from unittest.mock import patch
+
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def mock_send_email_fixture():
+    """Mock email delivery to avoid external SMTP calls during test execution."""
+    with patch("backend.main.send_email") as mock_mail:
+        mock_mail.return_value = {
+            "success": True,
+            "mode": "smtp",
+            "recipient": "dishasengar1june@gmail.com",
+            "smtp_connection": "PASS",
+            "smtp_authentication": "PASS",
+            "message_accepted": "PASS",
+            "error_type": None,
+            "safe_error_message": None,
+            "message": "Mock email sent"
+        }
+        yield mock_mail
 
 
 @pytest.fixture(autouse=True)
@@ -32,6 +52,7 @@ def setup_and_cleanup_test_records():
         db.commit()
     finally:
         db.close()
+
 
 
 def test_disha_admin_login():
